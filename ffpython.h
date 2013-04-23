@@ -201,6 +201,32 @@ struct pytype_traits_t<int>
 	static const char* get_typename() { return "int";}
 };
 
+template<>
+struct pytype_traits_t<bool>
+{
+    static PyObject* pyobj_from_cppobj(bool val_)
+    {
+        if (val_)
+        {
+            Py_RETURN_TRUE;
+        }
+        Py_RETURN_FALSE;
+    }
+    static int pyobj_to_cppobj(PyObject *pvalue_, bool& m_ret)
+    {
+        if (Py_False ==  pvalue_|| Py_None == pvalue_)
+        {
+            m_ret = false;
+        }
+        else
+        {
+            m_ret = true;
+        }
+        return 0;
+    }
+    static const char* get_typename() { return "bool";}
+};
+
 template<typename T>
 struct pytype_traits_t<pyoption_t<T> >
 {

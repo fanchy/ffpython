@@ -14,6 +14,7 @@ import helloworld
 #vn= None
 
 def foo(a,):#b,c,d,e,f,g, func_addr):
+	a.go(False)
 	a.val = 12345
 	print ("fooooooooooooo", a.get_val(), a.dump(), type(a), isinstance(a, helloworld.foo_t), "end")
 	vn = helloworld.foo2_t(5566)

@@ -24,7 +24,7 @@ struct foo_t
 		printf("in %s[%d,%p]\n", __FUNCTION__, ++val, this);
 		return 778899;
 	}
-	string go(int a)
+	string go(bool a)
 	{
 		printf("in %s[%d, %d, %p]\n", __FUNCTION__, ++val, a, this);
 		return __FUNCTION__;
