@@ -142,28 +142,45 @@ struct void_ignore_t<void>
 //! 记录各个基类和子类的相互关系
 struct cpp_to_pyclass_reg_info_t
 {
-    static void add(const string& child_, const string& base_)
+    struct inherit_info_t
     {
-        inherit_info[child_] = base_;
+        inherit_info_t():pytype_def(NULL){}
+        PyTypeObject* pytype_def;
+        string inherit_name;
+        set<PyTypeObject*> all_child;
+    };
+    typedef map<string, inherit_info_t> inherit_info_map_t;
+    static inherit_info_map_t& get_all_info()
+    {
+        static inherit_info_map_t inherit_info;
+        return inherit_info;
     }
-    static bool is_child(const string& child_, const string& base_)
+
+    static void add(const string& child_, const string& base_, PyTypeObject* def_)
     {
-        const string* c = &child_;
-        for (size_t i = 0; i < inherit_info.size(); ++i)//! 避免循环继承
+        printf("add %s--%s\n", child_.c_str(), base_.c_str());
+        inherit_info_t tmp;
+        tmp.inherit_name = base_;
+        tmp.pytype_def = def_;
+        get_all_info()[child_] = tmp;
+        get_all_info()[base_].all_child.insert(def_);
+    }
+    static bool is_instance(PyObject* pysrc, const string& class_)
+    {
+        inherit_info_map_t& inherit_info = get_all_info();
+        inherit_info_t& tmp = inherit_info[class_];
+        
+        for (set<PyTypeObject*>::iterator it = tmp.all_child.begin(); it != tmp.all_child.end(); ++it)
         {
-            c = &(inherit_info[*c]);
-            if (c->empty())
-            {
-                return false;
-            }
-            else if (*c == base_)
+            if (*it && PyObject_TypeCheck(pysrc, *it))
             {
                 return true;
             }
         }
+
         return false;
     }
-    static map<string, string> inherit_info;
+    
 };
 
 
@@ -690,6 +707,7 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
         };
         m_all_pyclass[i].pytype_def = tmp_pytype_def;
         m_all_pyclass[i].static_pytype_info->pytype_def = &m_all_pyclass[i].pytype_def;
+        cpp_to_pyclass_reg_info_t::add(m_all_pyclass[i].class_name, m_all_pyclass[i].inherit_name, &m_all_pyclass[i].pytype_def);
 
         if (PyType_Ready(&m_all_pyclass[i].pytype_def) < 0)
             return -1;
@@ -962,7 +980,9 @@ struct pytype_traits_t<const T*>
     static int pyobj_to_cppobj(PyObject *pvalue_, T*& m_ret)
     {
         PyObject *pysrc = PyObject_GetAttrString(pvalue_, "obj");
-        if (NULL == pysrc || !PyObject_TypeCheck(pysrc, pyclass_base_info_t<T>::pytype_info.pytype_def)) {
+        //!PyObject_TypeCheck(pysrc, pyclass_base_info_t<T>::pytype_info.pytype_def)) {
+        if (NULL == pysrc || false == cpp_to_pyclass_reg_info_t::is_instance(pysrc, pyclass_base_info_t<T>::pytype_info.class_name))
+        {
             Py_XDECREF(pysrc);
             return -1;
         }

@@ -3,8 +3,8 @@
 #include <Python.h>
 #include "ffpython.h"
 
-static int helloworld_impl(pyoption_t<string&>& v, int a2, float a3, char a4, string a5, const char* a6, string a7,
-                           const string& a8, double a9)
+static int helloworld_impl(pyoption_t<string&>& v)//, int a2, float a3, char a4, string a5, const char* a6, string a7,
+                           //const string& a8, double a9)
 {
 	printf("in....helloworld_impl, v[%s]\n", v.value("nonearg").c_str());
     return 1024;
@@ -25,7 +25,7 @@ struct foo_t
 		printf("in %s[%d,%p]\n", __FUNCTION__, val, this);
 		return 778899;
 	}
-	string go(bool a, int a2, char a3, const char* a4, string& a5, foo_t* a6, float a7, double a8, char* a9) const
+	string go(bool a)//, int a2, char a3, const char* a4, string& a5, foo_t* a6, float a7, double a8, char* a9) const
 	{
 		printf("in %s[%d, %d, %p]\n", __FUNCTION__, val, a, this);
 		return __FUNCTION__;
@@ -101,3 +101,16 @@ int main(int argc, char* argv[])
     
     return 0;
 }
+
+template <typename T>
+struct obj_guard_t
+{
+    obj_guard_t()
+    {
+        //inc(_FUNCTIOM)
+    }
+    ~obj_guard_t()
+    {
+        //Dec
+    }
+};
