@@ -45,7 +45,7 @@ struct foo2_t: public foo_t
 };
 
 
-void callpy()
+void callpy(ffpython_t& ffpython)
 {
     pycall_arg_t args(1);
 
@@ -61,9 +61,10 @@ void callpy()
     args.add(pf);
 
     pytype_tool_impl_t<map<string, int> >  pyret;
-    pycall_t::call("fftest", "foo", args, pyret);
+    //pycall_t::call("fftest", "foo", args, pyret);
+    int value = ffpython.call<int>("fftest", "foo", pf);
 
-    printf("pyret =%d\n", pyret.get_value().size());
+    printf("pyret =%d\n", value);
 }
 
 int main(int argc, char* argv[])
@@ -79,12 +80,19 @@ int main(int argc, char* argv[])
 
 	ffpython.reg_class<foo2_t, PYCTOR(int)>("foo2_t", "foo2_t", "foo_t")
             .reg(&foo2_t::nice, "nice");
-	ffpython.init_mod();
+	ffpython.init();
 
     PyRun_SimpleString("from time import time,ctime\n"
                      "print 'Today is',ctime(time())\n");
 
-	callpy();
+    try
+    {
+	    callpy(ffpython);
+    }
+    catch(exception& e_)
+    {
+        printf("exception<%s>\n", e_.what());
+    }
 
 	system("pause");
 	Py_Finalize();

@@ -243,7 +243,7 @@ struct pytype_traits_t<pyoption_t<T> >
         }
         return -1;
     }
-	static const char* get_typename() { return "int";}
+	static const char* get_typename() { return "pyoption_t";}
 };
 
 template<>
@@ -366,6 +366,7 @@ struct pytype_traits_t<vector<T> >
         }
         return -1;
     }
+    static const char* get_typename() { return "vector";}
 };
 template<typename T>
 struct pytype_traits_t<list<T> >
@@ -413,6 +414,7 @@ struct pytype_traits_t<list<T> >
         }
         return -1;
     }
+    static const char* get_typename() { return "list";}
 };
 template<typename T>
 struct pytype_traits_t<set<T> >
@@ -453,6 +455,7 @@ struct pytype_traits_t<set<T> >
         }
         return -1;
     }
+    static const char* get_typename() { return "set";}
 };
 template<typename T, typename R>
 struct pytype_traits_t<map<T, R> >
@@ -495,6 +498,7 @@ struct pytype_traits_t<map<T, R> >
         }
         return -1;
     }
+    static const char* get_typename() { return "map";}
 };
 
 
@@ -540,6 +544,7 @@ class pytype_tool_t
 public:
     virtual ~pytype_tool_t(){};
     virtual int parse_value(PyObject *pvalue_) = 0;
+    virtual const char* return_type() {return "";}
 };
 
 template<typename T>
@@ -561,6 +566,7 @@ public:
     }
 
     const T& get_value() const { return m_ret; }
+    virtual const char* return_type() {return pytype_traits_t<T>::get_typename();}
 private:
     T    m_ret;
 };
@@ -586,7 +592,7 @@ private:
 
 struct pycall_t
 {
-    static int call(PyObject *pModule, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_)
+    static int call_func(PyObject *pModule, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
     {
         PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
         if (pFunc && PyCallable_Check(pFunc)) {
@@ -595,7 +601,11 @@ struct pycall_t
 			pyarg_.release();//! 等价于Py_DECREF(pArgs);
 
             if (pValue != NULL) {
-                pyret_.parse_value(pValue);
+                if (pyret_.parse_value(pValue))
+                {
+                    err_ = "value returned is not ";
+                    err_ += pyret_.return_type();
+                }
                 Py_DECREF(pValue);
             }
         }
@@ -612,7 +622,8 @@ struct pycall_t
         }
         return 0;
     }
-    static int call(const string& file_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_)
+    template<typename T>
+    static T call(const string& file_name_, const string& func_name_, pycall_arg_t& pyarg_)
     {
         PyObject *pName = NULL, *pModule = NULL;
         
@@ -627,9 +638,18 @@ struct pycall_t
             return -1;
         }
 
-        call(pModule, func_name_, pyarg_, pyret_);
+        string err_msg;
+        pytype_tool_impl_t<T> pyret;
+        call_func(pModule, func_name_, pyarg_, pyret, err_msg);
         Py_DECREF(pModule);
-        return 0;
+
+        if (!err_msg.empty())
+        {
+            if (PyErr_Occurred())
+                PyErr_Clear();
+            throw runtime_error(err_msg.c_str());
+        }
+        return pyret.get_value();
     }
 };
 
@@ -990,6 +1010,16 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4)>
 #define  PYCTOR int (*)
 #endif
 
+template<typename T>
+struct void_ignore_t;
+
+template<typename T>
+struct void_ignore_t
+{
+    typedef T value_t;
+};
+#define  RET_V typename void_ignore_t<RET>::value_t
+
 class ffpython_t
 {
 	struct reg_info_t
@@ -1008,6 +1038,7 @@ class ffpython_t
 public:
     ffpython_t(const string& mod_name_, string doc_ = ""):m_mod_name(mod_name_),m_mod_doc(doc_){}
 
+    //! 注册static function，
     template<typename T>
     ffpython_t& reg(T func_, const string& func_name_, string doc_ = "")
     {
@@ -1025,90 +1056,8 @@ public:
         return *this;
     }
 
-	int init_mod()
-	{
-        string mod_name_ = m_mod_name;
-        string doc_      = m_mod_doc;
-
-		if (m_pymethod_defs.empty())
-		{
-			m_pymethod_defs.reserve(m_func_info.size() + 1);
-
-			for (size_t i = 0; i < m_func_info.size(); ++i)
-			{
-				PyMethodDef tmp = {m_func_info[i].func_impl_name.c_str(), m_func_info[i].func,
-									METH_VARARGS, m_func_info[i].doc_impl.c_str()};
-				m_pymethod_defs.push_back(tmp);
-			}
-			PyMethodDef tmp = {NULL};
-			m_pymethod_defs.push_back(tmp);
-		}
-		
-		PyObject* m = Py_InitModule3(mod_name_.c_str(), &(m_pymethod_defs.front()), doc_.c_str());
-		
-		for (size_t i = 0; i < m_func_info.size(); ++i)
-		{
-			string pystr_args;
-			string pystr_args_only_name;
-			for (int j = 0; j < m_func_info[i].args_num; ++j)
-			{
-				stringstream ss;
-				if (pystr_args.empty())
-				{
-					ss << "a" << (j+1);
-					pystr_args += ss.str();
-				}
-				else
-				{
-					ss << ", a" << (j+1);
-					pystr_args += ss.str();
-				}
-			}
-			pystr_args_only_name = pystr_args;
-			for (int j = 0; j < m_func_info[i].option_args_num; ++j)
-			{
-				stringstream ss;
-				if (pystr_args.empty())
-				{
-					ss << "a" << (m_func_info[i].args_num + j+1);
-					string tmp =  ss.str();
-					pystr_args_only_name += tmp;
-					pystr_args += tmp + " = None";
-				}
-				else
-				{
-					ss << ", a" << (m_func_info[i].args_num + j+1);
-					string tmp =  ss.str();
-					pystr_args_only_name += tmp;
-					pystr_args += tmp + " = None";
-				}
-			}
-			if (!pystr_args_only_name.empty())
-				pystr_args_only_name += ",";
-
-            char buff[1024];
-            SAFE_SPRINTF(buff, sizeof(buff), 
-                "def %s_%s(%s):\n"
-                    "\t'''%s'''\n"
-                    "\treturn %s.%s(%ld,%s)\n"
-                "import %s\n"
-                "%s.%s = %s_%s\n"
-                "%s_%s = None\n",
-                    mod_name_.c_str(), m_func_info[i].func_name.c_str(), pystr_args.c_str(),
-                    m_func_info[i].doc.c_str(), 
-                    mod_name_.c_str(), m_func_info[i].func_impl_name.c_str(), m_func_info[i].func_addr, pystr_args_only_name.c_str(),
-                    mod_name_.c_str(),
-                    mod_name_.c_str(), m_func_info[i].func_name.c_str(), mod_name_.c_str(), m_func_info[i].func_name.c_str(),
-                    mod_name_.c_str(), m_func_info[i].func_name.c_str()
-                    );
-
-			//printf(buff);
-			PyRun_SimpleString(buff);
-		}
-		
-		init_pyclass(m, mod_name_);
-		return 0;
-	}
+    //! 将需要注册的函数、类型注册到python虚拟机
+	int init();
 
 	template<typename T, typename CTOR>
 	pyclass_regigster_tool_t& reg_class(const string& class_name_, string doc_ = "", string inherit_name_ = "")
@@ -1137,268 +1086,90 @@ public:
 		return m_all_pyclass.back();
 	}
 
-    bool is_method_exist(const vector<pyclass_regigster_tool_t::method_info_t>& src_, const string& new_)
+    template<typename RET>
+    RET_V call(const string& file_, const string& func_)
     {
-        for (size_t i = 0; i < src_.size(); ++i)
-        {
-            if (new_ == src_[i].func_name)
-            {
-                return true;
-            }
-        }
-        return false;
+        pycall_arg_t args(0);
+        return pycall_t::call<RET_V>(file_, func_, args);
     }
-	bool is_property_exist(const vector<pyclass_regigster_tool_t::property_info_t>& src_, const string& new_)
+    template<typename RET, typename ARG1>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1)
     {
-        for (size_t i = 0; i < src_.size(); ++i)
-        {
-			if (new_ == src_[i].property_name)
-            {
-                return true;
-            }
-        }
-        return false;
+        pycall_arg_t args(1);
+        args.add(a1);
+        return pycall_t::call<RET_V>(file_, func_, args);
     }
-    pyclass_regigster_tool_t* get_pyclass_info_by_name(const string& name_)
+    template<typename RET, typename ARG1, typename ARG2>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2)
     {
-        for (size_t i = 0; i < m_all_pyclass.size(); ++i)
-        {
-            if (m_all_pyclass[i].class_name == name_)
-            {
-                return &(m_all_pyclass[i]);
-            }
-        }
-        return NULL;
+        pycall_arg_t args(2);
+        args.add(a1).add(a2);
+        return pycall_t::call<RET_V>(file_, func_, args);
     }
-	void init_pyclass(PyObject* m, const string& mod_name_)
-	{
-		for (size_t i = 0; i < m_all_pyclass.size(); ++i)
-		{
-            if (false == m_all_pyclass[i].inherit_name.empty())//! 存在基类
-            {
-                pyclass_regigster_tool_t* inherit_class = get_pyclass_info_by_name(m_all_pyclass[i].inherit_name);
-                assert(inherit_class && "base class must be registed");
-                for (size_t n = 0; n < inherit_class->methods_info.size(); ++n)
-                {
-                    const string& method_name = inherit_class->methods_info[n].func_name;
-                    if (false == is_method_exist(m_all_pyclass[i].methods_info, method_name))
-                    {
-                        m_all_pyclass[i].methods_info.push_back(inherit_class->methods_info[n]);
-                    }
-                }
-				for (size_t n = 0; n < inherit_class->propertys_info.size(); ++n)
-                {
-					const string& property_name = inherit_class->propertys_info[n].property_name;
-					if (false == is_property_exist(m_all_pyclass[i].propertys_info, property_name))
-                    {
-                        m_all_pyclass[i].propertys_info.push_back(inherit_class->propertys_info[n]);
-                    }
-                }
-            }
-            //! init class property
-            for (size_t j = 0; j < m_all_pyclass[i].propertys_info.size(); ++j)
-            {
-                PyGetSetDef tmp = {(char*)m_all_pyclass[i].propertys_info[j].property_name.c_str(),
-                                    m_all_pyclass[i].propertys_info[j].getter_func, 
-                                    m_all_pyclass[i].propertys_info[j].setter_func,
-                                    (char*)m_all_pyclass[i].propertys_info[j].doc.c_str(),
-									m_all_pyclass[i].propertys_info[j].ptr
-                                    };
-                m_all_pyclass[i].pyproperty_def.push_back(tmp);
-            }
-            PyGetSetDef tmp_property_def = {NULL};
-            m_all_pyclass[i].pyproperty_def.push_back(tmp_property_def);
-			//! init class method
-			for (size_t j = 0; j < m_all_pyclass[i].methods_info.size(); ++j)
-			{
-				PyMethodDef tmp = {m_all_pyclass[i].methods_info[j].func_real_name.c_str(),
-									m_all_pyclass[i].methods_info[j].func, 
-									METH_VARARGS,
-									m_all_pyclass[i].methods_info[j].doc.c_str()
-									};
-				m_all_pyclass[i].pymethod_def.push_back(tmp);
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3)
+    {
+        pycall_arg_t args(3);
+        args.add(a1).add(a2).add(a3);
+        return pycall_t::call<RET_V>(file_, func_, args);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4)
+    {
+        pycall_arg_t args(4);
+        args.add(a1).add(a2).add(a3).add(a4);
+        return pycall_t::call<RET_V>(file_, func_, args);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5)
+    {
+        pycall_arg_t args(5);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5);
+        return pycall_t::call<RET_V>(file_, func_, args);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5,const ARG6& a6)
+    {
+        pycall_arg_t args(6);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6);
+        return pycall_t::call<RET_V>(file_, func_, args);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5,const ARG6& a6,const ARG7& a7)
+    {
+        pycall_arg_t args(7);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7);
+        return pycall_t::call<RET_V>(file_, func_, args);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+             typename ARG8>
+    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8)
+    {
+        pycall_arg_t args(8);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8);
+        return pycall_t::call<RET_V>(file_, func_, args);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+             typename ARG8, typename ARG9>
+        RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+        const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8, const ARG9& a9)
+    {
+        pycall_arg_t args(9);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8).add(a9);
+        return pycall_t::call<RET_V>(file_, func_, args);
+    }
+private:
+    PyObject* init_method();
+    int init_pyclass(PyObject* m, const string& mod_name_);
 
-			}
-            
-			PyMethodDef tmp_method_def = {NULL};
-			m_all_pyclass[i].pymethod_def.push_back(tmp_method_def);
+    bool is_method_exist(const vector<pyclass_regigster_tool_t::method_info_t>& src_, const string& new_);
+    bool is_property_exist(const vector<pyclass_regigster_tool_t::property_info_t>& src_, const string& new_);
+    pyclass_regigster_tool_t* get_pyclass_info_by_name(const string& name_);
 
-			m_all_pyclass[i].class_name_with_mod = mod_name_ + "." + m_all_pyclass[i].class_name;
-			m_all_pyclass[i].class_reel_name_with_mod = mod_name_ + "." + m_all_pyclass[i].class_real_name;
-
-			PyTypeObject tmp_pytype_def = 
-			{
-				PyObject_HEAD_INIT(NULL)
-				0,                         /*ob_size*/
-				m_all_pyclass[i].class_reel_name_with_mod.c_str(),             /*tp_name*/
-				m_all_pyclass[i].type_size,             /*tp_size*/
-				0,                         /*tp_itemsize*/
-				(destructor)m_all_pyclass[i].dector, /*tp_dealloc*/
-				0,                         /*tp_print*/
-				0,                         /*tp_getattr*/
-				0,                         /*tp_setattr*/
-				0,                         /*tp_compare*/
-				0,                         /*tp_repr*/
-				0,                         /*tp_as_number*/
-				0,                         /*tp_as_sequence*/
-				0,                         /*tp_as_mapping*/
-				0,                         /*tp_hash */
-				0,                         /*tp_call*/
-				0,                         /*tp_str*/
-				0,                         /*tp_getattro*/
-				0,                         /*tp_setattro*/
-				0,                         /*tp_as_buffer*/
-				Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-				m_all_pyclass[i].doc.c_str(),           /* tp_doc */
-				0,		               /* tp_traverse */
-				0,		               /* tp_clear */
-				0,		               /* tp_richcompare */
-				0,		               /* tp_weaklistoffset */
-				0,		               /* tp_iter */
-				0,		               /* tp_iternext */
-				&(m_all_pyclass[i].pymethod_def.front()),//Noddy_methods,             /* tp_methods */
-				0,//Noddy_members,             /* tp_members */
-				&(m_all_pyclass[i].pyproperty_def.front()),//Noddy_getseters,           /* tp_getset */
-				0,                         /* tp_base */
-				0,                         /* tp_dict */
-				0,                         /* tp_descr_get */
-				0,                         /* tp_descr_set */
-				0,                         /* tp_dictoffset */
-				(initproc)m_all_pyclass[i].init,      /* tp_init */
-				0,                         /* tp_alloc */
-				m_all_pyclass[i].ctor,                 /* tp_new */
-			};
-			m_all_pyclass[i].pytype_def = tmp_pytype_def;
-            m_all_pyclass[i].static_pytype_info->pytype_def = &m_all_pyclass[i].pytype_def;
-
-			if (PyType_Ready(&m_all_pyclass[i].pytype_def) < 0)
-				return;
-			Py_INCREF(&m_all_pyclass[i].pytype_def);
-			PyModule_AddObject(m, m_all_pyclass[i].class_real_name.c_str(), (PyObject *)&m_all_pyclass[i].pytype_def);
-
-            stringstream str_def_args;
-            stringstream str_init_args;
-            for (int a = 0; a < m_all_pyclass[i].args_num; ++a)
-            {
-                str_def_args << "a"<<(a+1)<<",";
-                str_init_args << "a"<<(a+1)<<",";
-            }
-            for (int b = 0; b < m_all_pyclass[b].option_args_num; ++b)
-            {
-                str_def_args << "a"<<(m_all_pyclass[i].args_num+ b+1)<<" = None,";
-                str_init_args << "a"<<(m_all_pyclass[i].args_num+ b+1)<<",";
-            }
-
-            char buff[1024];
-            SAFE_SPRINTF(buff, sizeof(buff), 
-                "import %s\n"
-                "class %s_:\n"
-                "\t'''%s'''\n"
-                    "\tdef __init__(self, %s assign_obj_ = 0):\n"//! 定义init函数
-                    "\t\t'''%s'''\n"
-                        "\t\tif True == isinstance(assign_obj_, %s):\n"
-                            "\t\t\tself.obj = assign_obj_\n"
-                            "\t\t\treturn\n"
-                        "\t\tself.obj = %s(0,(%s))\n"
-
-                ,mod_name_.c_str(),
-                m_all_pyclass[i].class_name.c_str(),
-                "",//! TODO
-                str_def_args.str().c_str(),
-                "",//! TODO
-                m_all_pyclass[i].class_reel_name_with_mod.c_str(),
-                m_all_pyclass[i].class_reel_name_with_mod.c_str(), str_init_args.str().c_str()
-                );
-
-            string gen_class_str = buff;
-            //! 增加属性
-            for (size_t c = 0; c < m_all_pyclass[i].propertys_info.size(); ++c)
-            {
-                SAFE_SPRINTF(buff, sizeof(buff), 
-						"\tdef get_%s(self):\n"
-							"\t\treturn self.obj.%s\n"
-						"\tdef set_%s(self, v):\n"
-							"\t\tself.obj.%s = v\n"
-						"\t@property\n"
-						"\tdef %s(self):\n"
-							"\t\treturn self.obj.%s\n"
-						"\t@%s.setter\n"
-						"\tdef %s(self, v):\n"
-							"\t\tself.obj.%s = v\n",
-                                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-                                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-								m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-                                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-								m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-								m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-								m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-								m_all_pyclass[i].propertys_info[c].property_name.c_str(),
-								m_all_pyclass[i].propertys_info[c].property_name.c_str()
-                                );
-                gen_class_str += buff;
-            }
-
-			for (size_t m = 0; m < m_all_pyclass[i].methods_info.size(); ++m)
-			{
-				string pystr_args;
-				string pystr_args_only_name;
-				for (int j = 0; j < m_all_pyclass[i].methods_info[m].args_num; ++j)
-				{
-					stringstream ss;
-					if (pystr_args.empty())
-					{
-						ss << "a" << (j+1);
-						pystr_args += ss.str();
-					}
-					else
-					{
-						ss << ", a" << (j+1);
-						pystr_args += ss.str();
-					}
-				}
-				pystr_args_only_name = pystr_args;
-				for (int j = 0; j < m_all_pyclass[i].methods_info[m].option_args_num; ++j)
-				{
-					stringstream ss;
-					if (pystr_args.empty())
-					{
-						ss << "a" << (m_all_pyclass[i].methods_info[m].args_num + j+1);
-						string tmp =  ss.str();
-						pystr_args_only_name += tmp;
-						pystr_args += tmp + " = None";
-					}
-					else
-					{
-						ss << ", a" << (m_all_pyclass[i].methods_info[m].args_num + j+1);
-						string tmp =  ss.str();
-						pystr_args_only_name += tmp;
-						pystr_args += tmp + " = None";
-					}
-				}
-				if (!pystr_args_only_name.empty())
-					pystr_args_only_name += ",";
-
-                SAFE_SPRINTF(buff, sizeof(buff), 
-                    "\tdef %s(self,%s):\n"
-                        "\t\t'''%s'''\n"
-                        "\t\treturn self.obj.%s(%ld,(%s))\n"
-                    ,m_all_pyclass[i].methods_info[m].func_name.c_str(), pystr_args.c_str(),
-                    m_all_pyclass[i].methods_info[m].doc.c_str(),
-                    m_all_pyclass[i].methods_info[m].func_real_name.c_str(), m_all_pyclass[i].methods_info[m].func_addr, pystr_args_only_name.c_str()
-                    );
-                gen_class_str += buff;
-			}
-            SAFE_SPRINTF(buff, sizeof(buff), 
-                "%s.%s = %s_\n"
-                "%s_ = None\n",
-                mod_name_.c_str(), m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
-                m_all_pyclass[i].class_name.c_str()
-                );
-            gen_class_str += buff;
-			//printf(gen_class_str.c_str());
-			PyRun_SimpleString(gen_class_str.c_str());
-		}
-	}
 private:
     string                              m_mod_name;
     string                              m_mod_doc;
@@ -1409,5 +1180,360 @@ private:
 	vector<pyclass_regigster_tool_t>	m_all_pyclass;
 	
 };
+
+int ffpython_t::init()
+{
+    PyObject* m = init_method();
+    init_pyclass(m, m_mod_name);
+    return 0;
+}
+
+PyObject* ffpython_t::init_method()
+{
+    string mod_name_ = m_mod_name;
+    string doc_      = m_mod_doc;
+
+    if (m_pymethod_defs.empty())
+    {
+        m_pymethod_defs.reserve(m_func_info.size() + 1);
+
+        for (size_t i = 0; i < m_func_info.size(); ++i)
+        {
+            PyMethodDef tmp = {m_func_info[i].func_impl_name.c_str(), m_func_info[i].func,
+                METH_VARARGS, m_func_info[i].doc_impl.c_str()};
+            m_pymethod_defs.push_back(tmp);
+        }
+        PyMethodDef tmp = {NULL};
+        m_pymethod_defs.push_back(tmp);
+    }
+
+    PyObject* m = Py_InitModule3(mod_name_.c_str(), &(m_pymethod_defs.front()), doc_.c_str());
+
+    for (size_t i = 0; i < m_func_info.size(); ++i)
+    {
+        string pystr_args;
+        string pystr_args_only_name;
+        for (int j = 0; j < m_func_info[i].args_num; ++j)
+        {
+            stringstream ss;
+            if (pystr_args.empty())
+            {
+                ss << "a" << (j+1);
+                pystr_args += ss.str();
+            }
+            else
+            {
+                ss << ", a" << (j+1);
+                pystr_args += ss.str();
+            }
+        }
+        pystr_args_only_name = pystr_args;
+        for (int j = 0; j < m_func_info[i].option_args_num; ++j)
+        {
+            stringstream ss;
+            if (pystr_args.empty())
+            {
+                ss << "a" << (m_func_info[i].args_num + j+1);
+                string tmp =  ss.str();
+                pystr_args_only_name += tmp;
+                pystr_args += tmp + " = None";
+            }
+            else
+            {
+                ss << ", a" << (m_func_info[i].args_num + j+1);
+                string tmp =  ss.str();
+                pystr_args_only_name += tmp;
+                pystr_args += tmp + " = None";
+            }
+        }
+        if (!pystr_args_only_name.empty())
+            pystr_args_only_name += ",";
+
+        char buff[1024];
+        SAFE_SPRINTF(buff, sizeof(buff), 
+            "def %s_%s(%s):\n"
+            "\t'''%s'''\n"
+            "\treturn %s.%s(%ld,%s)\n"
+            "import %s\n"
+            "%s.%s = %s_%s\n"
+            "%s_%s = None\n",
+            mod_name_.c_str(), m_func_info[i].func_name.c_str(), pystr_args.c_str(),
+            m_func_info[i].doc.c_str(), 
+            mod_name_.c_str(), m_func_info[i].func_impl_name.c_str(), m_func_info[i].func_addr, pystr_args_only_name.c_str(),
+            mod_name_.c_str(),
+            mod_name_.c_str(), m_func_info[i].func_name.c_str(), mod_name_.c_str(), m_func_info[i].func_name.c_str(),
+            mod_name_.c_str(), m_func_info[i].func_name.c_str()
+            );
+
+        //printf(buff);
+        PyRun_SimpleString(buff);
+    }
+
+    return m;
+}
+
+int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
+{
+    for (size_t i = 0; i < m_all_pyclass.size(); ++i)
+    {
+        if (false == m_all_pyclass[i].inherit_name.empty())//! 存在基类
+        {
+            pyclass_regigster_tool_t* inherit_class = get_pyclass_info_by_name(m_all_pyclass[i].inherit_name);
+            assert(inherit_class && "base class must be registed");
+            for (size_t n = 0; n < inherit_class->methods_info.size(); ++n)
+            {
+                const string& method_name = inherit_class->methods_info[n].func_name;
+                if (false == is_method_exist(m_all_pyclass[i].methods_info, method_name))
+                {
+                    m_all_pyclass[i].methods_info.push_back(inherit_class->methods_info[n]);
+                }
+            }
+            for (size_t n = 0; n < inherit_class->propertys_info.size(); ++n)
+            {
+                const string& property_name = inherit_class->propertys_info[n].property_name;
+                if (false == is_property_exist(m_all_pyclass[i].propertys_info, property_name))
+                {
+                    m_all_pyclass[i].propertys_info.push_back(inherit_class->propertys_info[n]);
+                }
+            }
+        }
+        //! init class property
+        for (size_t j = 0; j < m_all_pyclass[i].propertys_info.size(); ++j)
+        {
+            PyGetSetDef tmp = {(char*)m_all_pyclass[i].propertys_info[j].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[j].getter_func, 
+                m_all_pyclass[i].propertys_info[j].setter_func,
+                (char*)m_all_pyclass[i].propertys_info[j].doc.c_str(),
+                m_all_pyclass[i].propertys_info[j].ptr
+            };
+            m_all_pyclass[i].pyproperty_def.push_back(tmp);
+        }
+        PyGetSetDef tmp_property_def = {NULL};
+        m_all_pyclass[i].pyproperty_def.push_back(tmp_property_def);
+        //! init class method
+        for (size_t j = 0; j < m_all_pyclass[i].methods_info.size(); ++j)
+        {
+            PyMethodDef tmp = {m_all_pyclass[i].methods_info[j].func_real_name.c_str(),
+                m_all_pyclass[i].methods_info[j].func, 
+                METH_VARARGS,
+                m_all_pyclass[i].methods_info[j].doc.c_str()
+            };
+            m_all_pyclass[i].pymethod_def.push_back(tmp);
+
+        }
+
+        PyMethodDef tmp_method_def = {NULL};
+        m_all_pyclass[i].pymethod_def.push_back(tmp_method_def);
+
+        m_all_pyclass[i].class_name_with_mod = mod_name_ + "." + m_all_pyclass[i].class_name;
+        m_all_pyclass[i].class_reel_name_with_mod = mod_name_ + "." + m_all_pyclass[i].class_real_name;
+
+        PyTypeObject tmp_pytype_def = 
+        {
+            PyObject_HEAD_INIT(NULL)
+            0,                         /*ob_size*/
+            m_all_pyclass[i].class_reel_name_with_mod.c_str(),             /*tp_name*/
+            m_all_pyclass[i].type_size,             /*tp_size*/
+            0,                         /*tp_itemsize*/
+            (destructor)m_all_pyclass[i].dector, /*tp_dealloc*/
+            0,                         /*tp_print*/
+            0,                         /*tp_getattr*/
+            0,                         /*tp_setattr*/
+            0,                         /*tp_compare*/
+            0,                         /*tp_repr*/
+            0,                         /*tp_as_number*/
+            0,                         /*tp_as_sequence*/
+            0,                         /*tp_as_mapping*/
+            0,                         /*tp_hash */
+            0,                         /*tp_call*/
+            0,                         /*tp_str*/
+            0,                         /*tp_getattro*/
+            0,                         /*tp_setattro*/
+            0,                         /*tp_as_buffer*/
+            Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+            m_all_pyclass[i].doc.c_str(),           /* tp_doc */
+            0,		               /* tp_traverse */
+            0,		               /* tp_clear */
+            0,		               /* tp_richcompare */
+            0,		               /* tp_weaklistoffset */
+            0,		               /* tp_iter */
+            0,		               /* tp_iternext */
+            &(m_all_pyclass[i].pymethod_def.front()),//Noddy_methods,             /* tp_methods */
+            0,//Noddy_members,             /* tp_members */
+            &(m_all_pyclass[i].pyproperty_def.front()),//Noddy_getseters,           /* tp_getset */
+            0,                         /* tp_base */
+            0,                         /* tp_dict */
+            0,                         /* tp_descr_get */
+            0,                         /* tp_descr_set */
+            0,                         /* tp_dictoffset */
+            (initproc)m_all_pyclass[i].init,      /* tp_init */
+            0,                         /* tp_alloc */
+            m_all_pyclass[i].ctor,                 /* tp_new */
+        };
+        m_all_pyclass[i].pytype_def = tmp_pytype_def;
+        m_all_pyclass[i].static_pytype_info->pytype_def = &m_all_pyclass[i].pytype_def;
+
+        if (PyType_Ready(&m_all_pyclass[i].pytype_def) < 0)
+            return -1;
+        Py_INCREF(&m_all_pyclass[i].pytype_def);
+        PyModule_AddObject(m, m_all_pyclass[i].class_real_name.c_str(), (PyObject *)&m_all_pyclass[i].pytype_def);
+
+        stringstream str_def_args;
+        stringstream str_init_args;
+        for (int a = 0; a < m_all_pyclass[i].args_num; ++a)
+        {
+            str_def_args << "a"<<(a+1)<<",";
+            str_init_args << "a"<<(a+1)<<",";
+        }
+        for (int b = 0; b < m_all_pyclass[b].option_args_num; ++b)
+        {
+            str_def_args << "a"<<(m_all_pyclass[i].args_num+ b+1)<<" = None,";
+            str_init_args << "a"<<(m_all_pyclass[i].args_num+ b+1)<<",";
+        }
+
+        char buff[1024];
+        SAFE_SPRINTF(buff, sizeof(buff), 
+            "import %s\n"
+            "class %s_:\n"
+            "\t'''%s'''\n"
+            "\tdef __init__(self, %s assign_obj_ = 0):\n"//! 定义init函数
+            "\t\t'''%s'''\n"
+            "\t\tif True == isinstance(assign_obj_, %s):\n"
+            "\t\t\tself.obj = assign_obj_\n"
+            "\t\t\treturn\n"
+            "\t\tself.obj = %s(0,(%s))\n"
+
+            ,mod_name_.c_str(),
+            m_all_pyclass[i].class_name.c_str(),
+            "",//! TODO
+            str_def_args.str().c_str(),
+            "",//! TODO
+            m_all_pyclass[i].class_reel_name_with_mod.c_str(),
+            m_all_pyclass[i].class_reel_name_with_mod.c_str(), str_init_args.str().c_str()
+            );
+
+        string gen_class_str = buff;
+        //! 增加属性
+        for (size_t c = 0; c < m_all_pyclass[i].propertys_info.size(); ++c)
+        {
+            SAFE_SPRINTF(buff, sizeof(buff), 
+                "\tdef get_%s(self):\n"
+                "\t\treturn self.obj.%s\n"
+                "\tdef set_%s(self, v):\n"
+                "\t\tself.obj.%s = v\n"
+                "\t@property\n"
+                "\tdef %s(self):\n"
+                "\t\treturn self.obj.%s\n"
+                "\t@%s.setter\n"
+                "\tdef %s(self, v):\n"
+                "\t\tself.obj.%s = v\n",
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str(),
+                m_all_pyclass[i].propertys_info[c].property_name.c_str()
+                );
+            gen_class_str += buff;
+        }
+
+        for (size_t m = 0; m < m_all_pyclass[i].methods_info.size(); ++m)
+        {
+            string pystr_args;
+            string pystr_args_only_name;
+            for (int j = 0; j < m_all_pyclass[i].methods_info[m].args_num; ++j)
+            {
+                stringstream ss;
+                if (pystr_args.empty())
+                {
+                    ss << "a" << (j+1);
+                    pystr_args += ss.str();
+                }
+                else
+                {
+                    ss << ", a" << (j+1);
+                    pystr_args += ss.str();
+                }
+            }
+            pystr_args_only_name = pystr_args;
+            for (int j = 0; j < m_all_pyclass[i].methods_info[m].option_args_num; ++j)
+            {
+                stringstream ss;
+                if (pystr_args.empty())
+                {
+                    ss << "a" << (m_all_pyclass[i].methods_info[m].args_num + j+1);
+                    string tmp =  ss.str();
+                    pystr_args_only_name += tmp;
+                    pystr_args += tmp + " = None";
+                }
+                else
+                {
+                    ss << ", a" << (m_all_pyclass[i].methods_info[m].args_num + j+1);
+                    string tmp =  ss.str();
+                    pystr_args_only_name += tmp;
+                    pystr_args += tmp + " = None";
+                }
+            }
+            if (!pystr_args_only_name.empty())
+                pystr_args_only_name += ",";
+
+            SAFE_SPRINTF(buff, sizeof(buff), 
+                "\tdef %s(self,%s):\n"
+                "\t\t'''%s'''\n"
+                "\t\treturn self.obj.%s(%ld,(%s))\n"
+                ,m_all_pyclass[i].methods_info[m].func_name.c_str(), pystr_args.c_str(),
+                m_all_pyclass[i].methods_info[m].doc.c_str(),
+                m_all_pyclass[i].methods_info[m].func_real_name.c_str(), m_all_pyclass[i].methods_info[m].func_addr, pystr_args_only_name.c_str()
+                );
+            gen_class_str += buff;
+        }
+        SAFE_SPRINTF(buff, sizeof(buff), 
+            "%s.%s = %s_\n"
+            "%s_ = None\n",
+            mod_name_.c_str(), m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
+            m_all_pyclass[i].class_name.c_str()
+            );
+        gen_class_str += buff;
+        //printf(gen_class_str.c_str());
+        PyRun_SimpleString(gen_class_str.c_str());
+    }
+    return 0;
+}
+bool ffpython_t::is_method_exist(const vector<pyclass_regigster_tool_t::method_info_t>& src_, const string& new_)
+{
+    for (size_t i = 0; i < src_.size(); ++i)
+    {
+        if (new_ == src_[i].func_name)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+bool ffpython_t::is_property_exist(const vector<pyclass_regigster_tool_t::property_info_t>& src_, const string& new_)
+{
+    for (size_t i = 0; i < src_.size(); ++i)
+    {
+        if (new_ == src_[i].property_name)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+pyclass_regigster_tool_t* ffpython_t::get_pyclass_info_by_name(const string& name_)
+{
+    for (size_t i = 0; i < m_all_pyclass.size(); ++i)
+    {
+        if (m_all_pyclass[i].class_name == name_)
+        {
+            return &(m_all_pyclass[i]);
+        }
+    }
+    return NULL;
+}
 
 #endif
