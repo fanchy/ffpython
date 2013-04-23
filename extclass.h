@@ -344,7 +344,7 @@ template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2>
 struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2)>
 {
 	typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2);
-	static int args_num() { return 1-option_args_num();}
+	static int args_num() { return 2-option_args_num();}
 	static int option_args_num() { 
 		return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
 				pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is();
@@ -378,7 +378,7 @@ template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typena
 struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3)>
 {
 	typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3);
-	static int args_num() { return 1-option_args_num();}
+	static int args_num() { return 3-option_args_num();}
 	static int option_args_num() { 
 		return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
 				pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
@@ -393,7 +393,6 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3)>
             return NULL;
         }
         func_t f = pyext_tool.get_func_ptr<func_t>();
-		memcpy(&f, &addr, sizeof(f));
         if (0 == f)
         {
             PyErr_SetString(PyExc_TypeError, "func address must provided");
@@ -414,7 +413,7 @@ template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typena
 struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4)>
 {
 	typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4);
-	static int args_num() { return 1-option_args_num();}
+	static int args_num() { return 4-option_args_num();}
 	static int option_args_num() { 
 		return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
 				pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
@@ -429,9 +428,7 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4)>
         {
             return NULL;
         }
-        func_t f = NULL;
-		long addr = pyext_tool.get_func_addr();
-		memcpy(&f, &addr, sizeof(f));
+        func_t f = pyext_tool.get_func_ptr<func_t>();
         if (0 == f)
         {
             PyErr_SetString(PyExc_TypeError, "func address must provided");
@@ -449,5 +446,616 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4)>
 	}
 };
 
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5)>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5);
+    static int args_num() { return 5-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+            typename ARG6>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    static int args_num() { return 6-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+        typename ARG6, typename ARG7>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
+    static int args_num() { return 7-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6, a7);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+        typename ARG6, typename ARG7, typename ARG8>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8)>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8);
+    static int args_num() { return 8-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        type_ref_traits_t<ARG8> a8;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).parse_arg(a8.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6, a7, a8);;
+    }
+};
+
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+        typename ARG6, typename ARG7, typename ARG8, typename ARG9>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9)>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
+    static int args_num() { return 9-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG9>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        type_ref_traits_t<ARG8> a8;
+        type_ref_traits_t<ARG9> a9;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).parse_arg(a8.value).parse_arg(a9.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6, a7, a8, a9);;
+    }
+};
+
+//! const类型成员函数---------------------------------------------------------------------------------------------
+
+template<typename RET, typename CLASS_TYPE>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)() const>
+{
+    typedef RET (CLASS_TYPE::*func_t)() const;
+    static int args_num() { return 0;}
+    static int option_args_num() { return 0;}
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1) const;
+    static int args_num() { return 1-option_args_num();}
+    static int option_args_num() { return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is();}
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        if (pyext_tool.parse_arg(a1.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2) const;
+    static int args_num() { return 2-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2);;
+    }
+};
+
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3) const;
+    static int args_num() { return 3-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4) const;
+    static int args_num() { return 4-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5) const;
+    static int args_num() { return 5-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+typename ARG6>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const;
+    static int args_num() { return 6-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+typename ARG6, typename ARG7>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const;
+    static int args_num() { return 7-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6, a7);;
+    }
+};
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+typename ARG6, typename ARG7, typename ARG8>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const;
+    static int args_num() { return 8-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        type_ref_traits_t<ARG8> a8;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).parse_arg(a8.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6, a7, a8);;
+    }
+};
+
+
+template<typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5,
+typename ARG6, typename ARG7, typename ARG8, typename ARG9>
+struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9) const>
+{
+    typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9) const;
+    static int args_num() { return 9-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is()+
+            pyoption_traits_t<type_ref_traits_t<ARG9>::value_t>::is();
+    }
+
+    static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = pyext_tool.get_func_ptr<func_t>();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        type_ref_traits_t<ARG8> a8;
+        type_ref_traits_t<ARG9> a9;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).parse_arg(a8.value).parse_arg(a9.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6, a7, a8, a9);;
+    }
+};
+
 
 #endif
+

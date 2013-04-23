@@ -20,6 +20,8 @@ using namespace std;
 
 #include "extclass.h"
 
+struct cpp_void_t{};
+
 //! 用于抽取类型、类型对应的引用
 template<typename T>
 struct type_ref_traits_t
@@ -266,13 +268,13 @@ struct pytype_traits_t<string>
 };
 
 template<>
-struct pytype_traits_t<const char*>
+struct pytype_traits_t<char*>
 {
     static PyObject* pyobj_from_cppobj(const char* val_)
     {
         return PyString_FromString(val_);
     }
-    static int pyobj_to_cppobj(PyObject *pvalue_, const char*& m_ret)
+    static int pyobj_to_cppobj(PyObject *pvalue_, char*& m_ret)
     {
         if (true == PyString_Check(pvalue_))
         {
@@ -570,6 +572,23 @@ public:
 private:
     T    m_ret;
 };
+
+template<>
+class pytype_tool_impl_t<cpp_void_t>: public pytype_tool_t
+{
+public:
+    pytype_tool_impl_t():m_ret(){}
+
+    virtual int parse_value(PyObject *pvalue_)
+    {
+        return 0;
+    }
+
+    const cpp_void_t& get_value() const { return m_ret; }
+    virtual const char* return_type() { return "void";}
+private:
+    cpp_void_t    m_ret;
+};
 template<typename T>
 class pytype_tool_impl_t<const T*>: public pytype_tool_t
 {
@@ -731,6 +750,7 @@ struct pyext_return_tool_t;
 template<typename T>
 struct pyext_return_tool_t
 {
+    //! 用于静态方法
 	template<typename F>
 	static PyObject* route_call(F f)
 	{
@@ -756,6 +776,38 @@ struct pyext_return_tool_t
 	{
 		return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value));
 	}
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value, a5.value));
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value));
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+                typename ARG7>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
+                a7.value));
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+                typename ARG7, typename ARG8>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
+                a7.value, a8.value));
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+                typename ARG7, typename ARG8, typename ARG9>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8, ARG9& a9)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
+                a7.value, a8.value, a9.value));
+    }
+    //! 用于成员方法
 	template<typename O, typename F>
 	static PyObject* route_method_call(O o, F f)
 	{
@@ -781,6 +833,37 @@ struct pyext_return_tool_t
 	{
 		return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value));
 	}
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value));
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value));
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+            typename ARG7>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
+            a7.value));
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+            typename ARG7, typename ARG8>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
+            a7.value, a8.value));
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+            typename ARG7, typename ARG8, typename ARG9>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8, ARG9& a9)
+    {
+        return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
+            a7.value, a8.value, a9.value));
+    }
 };
 
 template<>
@@ -816,6 +899,38 @@ struct pyext_return_tool_t<void>
 		f(a1.value, a2.value, a3.value, a4.value);
 		return Py_RETURN_NONE;
 	}
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5)
+    {
+        f(a1.value, a2.value, a3.value, a4.value, a5.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6)
+    {
+        f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7)
+    {
+        f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+                typename ARG8>
+    static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8)
+    {
+        f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+                typename ARG8, typename ARG9>
+        static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8, ARG9& a9)
+    {
+        f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value, a9.value);
+        return Py_RETURN_NONE;
+    }
 	template<typename O, typename F>
 	static PyObject* route_method_call(O o, F f)
 	{
@@ -846,6 +961,39 @@ struct pyext_return_tool_t<void>
 		(o->*f)(a1.value, a2.value, a3.value, a4.value);
 		return Py_RETURN_NONE;
 	}
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5)
+    {
+        (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6)
+    {
+        (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+                typename ARG7>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7)
+    {
+        (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+                typename ARG7, typename ARG8>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8)
+    {
+        (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value);
+        return Py_RETURN_NONE;
+    }
+    template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+                typename ARG7, typename ARG8, typename ARG9>
+    static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8,  ARG9& a9)
+    {
+        (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value, a9.value);
+        return Py_RETURN_NONE;
+    }
 };
 template <typename T>
 struct pyext_func_traits_t;
@@ -962,7 +1110,7 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3)>
             return NULL;
         }
 		type_ref_traits_t<ARG1> a1;
-		type_ref_traits_t<ARG2> a1;
+		type_ref_traits_t<ARG2> a2;
 		type_ref_traits_t<ARG3> a3;
 		if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).is_err())
 		{
@@ -996,7 +1144,7 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4)>
             return NULL;
         }
 		type_ref_traits_t<ARG1> a1;
-		type_ref_traits_t<ARG2> a1;
+		type_ref_traits_t<ARG2> a2;
 		type_ref_traits_t<ARG3> a3;
 		type_ref_traits_t<ARG4> a4;
 		if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value).is_err())
@@ -1004,6 +1152,224 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4)>
 			return NULL;
 		}
 		return pyext_return_tool_t<RET>::route_call(f, a1, a2, a3, a4);
+    }
+};
+
+template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5)>
+{
+    typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5);
+    static int args_num() { return 5-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is();
+    }
+    static PyObject* pyfunc(PyObject* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = (func_t)pyext_tool.get_func_addr();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+                        .parse_arg(a5.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_call(f, a1, a2, a3, a4, a5);
+    }
+};
+
+template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)>
+{
+    typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    static int args_num() { return 6-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is();
+    }
+    static PyObject* pyfunc(PyObject* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = (func_t)pyext_tool.get_func_addr();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_call(f, a1, a2, a3, a4, a5, a6);
+    }
+};
+
+template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+            typename ARG7>
+struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)>
+{
+    typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
+    static int args_num() { return 7-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is();
+    }
+    static PyObject* pyfunc(PyObject* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = (func_t)pyext_tool.get_func_addr();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_call(f, a1, a2, a3, a4, a5, a6, a7);
+    }
+};
+
+template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+            typename ARG7, typename ARG8>
+struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8)>
+{
+    typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8);
+    static int args_num() { return 8-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is();
+    }
+    static PyObject* pyfunc(PyObject* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = (func_t)pyext_tool.get_func_addr();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        type_ref_traits_t<ARG8> a8;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).parse_arg(a8.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_call(f, a1, a2, a3, a4, a5, a6, a7, a8);
+    }
+};
+
+template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
+            typename ARG7, typename ARG8, typename ARG9>
+struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9)>
+{
+    typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
+    static int args_num() { return 9-option_args_num();}
+    static int option_args_num() { 
+        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is() +
+            pyoption_traits_t<type_ref_traits_t<ARG9>::value_t>::is();
+    }
+    static PyObject* pyfunc(PyObject* self, PyObject* args)
+    {
+        pyext_tool_t pyext_tool(args);
+        if (pyext_tool.is_err())
+        {
+            return NULL;
+        }
+        func_t f = (func_t)pyext_tool.get_func_addr();
+        if (0 == f)
+        {
+            PyErr_SetString(PyExc_TypeError, "func address must provided");
+            return NULL;
+        }
+        type_ref_traits_t<ARG1> a1;
+        type_ref_traits_t<ARG2> a2;
+        type_ref_traits_t<ARG3> a3;
+        type_ref_traits_t<ARG4> a4;
+        type_ref_traits_t<ARG5> a5;
+        type_ref_traits_t<ARG6> a6;
+        type_ref_traits_t<ARG7> a7;
+        type_ref_traits_t<ARG8> a8;
+        type_ref_traits_t<ARG9> a9;
+        if (pyext_tool.parse_arg(a1.value).parse_arg(a2.value).parse_arg(a3.value).parse_arg(a4.value)
+            .parse_arg(a5.value).parse_arg(a6.value).parse_arg(a7.value).parse_arg(a8.value).parse_arg(a9.value).is_err())
+        {
+            return NULL;
+        }
+        return pyext_return_tool_t<RET>::route_call(f, a1, a2, a3, a4, a5, a6, a7, a8, a9);
     }
 };
 
@@ -1019,6 +1385,13 @@ struct void_ignore_t
 {
     typedef T value_t;
 };
+
+template<>
+struct void_ignore_t<void>
+{
+    typedef cpp_void_t value_t;
+};
+
 #define  RET_V typename void_ignore_t<RET>::value_t
 
 class ffpython_t
@@ -1091,7 +1464,7 @@ public:
     RET_V call(const string& file_, const string& func_)
     {
         pycall_arg_t args(0);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1>
@@ -1099,7 +1472,7 @@ public:
     {
         pycall_arg_t args(1);
         args.add(a1);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2>
@@ -1107,7 +1480,7 @@ public:
     {
         pycall_arg_t args(2);
         args.add(a1).add(a2);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3>
@@ -1115,7 +1488,7 @@ public:
     {
         pycall_arg_t args(3);
         args.add(a1).add(a2).add(a3);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
@@ -1123,7 +1496,7 @@ public:
     {
         pycall_arg_t args(4);
         args.add(a1).add(a2).add(a3).add(a4);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
@@ -1132,7 +1505,7 @@ public:
     {
         pycall_arg_t args(5);
         args.add(a1).add(a2).add(a3).add(a4).add(a5);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
@@ -1141,7 +1514,7 @@ public:
     {
         pycall_arg_t args(6);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
@@ -1150,7 +1523,7 @@ public:
     {
         pycall_arg_t args(7);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
@@ -1160,7 +1533,7 @@ public:
     {
         pycall_arg_t args(8);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
@@ -1170,7 +1543,7 @@ public:
     {
         pycall_arg_t args(9);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8).add(a9);
-        pytype_tool_impl_t<RET> pyret;
+        pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
 private:

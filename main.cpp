@@ -3,7 +3,8 @@
 #include <Python.h>
 #include "ffpython.h"
 
-static int helloworld_impl(pyoption_t<string&>& v)
+static int helloworld_impl(pyoption_t<string&>& v, int a2, float a3, char a4, string a5, const char* a6, string a7,
+                           const string& a8, double a9)
 {
 	printf("in....helloworld_impl, v[%s]\n", v.value("nonearg").c_str());
     return 1024;
@@ -19,14 +20,14 @@ struct foo_t
 	{
 		printf("~foo deconstructor %s\n", __FUNCTION__);
 	}
-	int dump()
+	int dump() const
 	{
-		printf("in %s[%d,%p]\n", __FUNCTION__, ++val, this);
+		printf("in %s[%d,%p]\n", __FUNCTION__, val, this);
 		return 778899;
 	}
-	string go(bool a)
+	string go(bool a, int a2, char a3, const char* a4, string& a5, foo_t* a6, float a7, double a8, char* a9) const
 	{
-		printf("in %s[%d, %d, %p]\n", __FUNCTION__, ++val, a, this);
+		printf("in %s[%d, %d, %p]\n", __FUNCTION__, val, a, this);
 		return __FUNCTION__;
 	}
 	int val;
@@ -62,6 +63,7 @@ void callpy(ffpython_t& ffpython)
 
     pytype_tool_impl_t<map<string, int> >  pyret;
     //pycall_t::call("fftest", "foo", args, pyret);
+    ffpython.call<void>("fftest", "foo", pf);
     int value = ffpython.call<int>("fftest", "foo", pf);
 
     printf("pyret =%d\n", value);
