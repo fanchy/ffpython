@@ -158,7 +158,6 @@ struct cpp_to_pyclass_reg_info_t
 
     static void add(const string& child_, const string& base_, PyTypeObject* def_)
     {
-        printf("add %s--%s\n", child_.c_str(), base_.c_str());
         inherit_info_t tmp;
         tmp.inherit_name = base_;
         tmp.pytype_def = def_;

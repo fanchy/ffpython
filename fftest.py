@@ -14,14 +14,14 @@ import helloworld
 #vn= None
 
 def foo(a,):#b,c,d,e,f,g, func_addr):
-	a.go(False)
+	a.go(True)
 	a.val = 12345
 	print ("fooooooooooooo", a.get_val(), a.dump(), type(a), isinstance(a, helloworld.foo_t), "end")
 	vn = helloworld.foo2_t(5566)
 	print("-"*10)
-	vn.nice(a)
+	vn.nice(vn)
 	print(vn.val)
-	return
+	return 0
 	#print ("fooooooooooooo",a, b, c,d,e,f,g)
 	#print("from ext", helloworld.helloworld(func_addr, (1, 2)))
 	print("from ext", helloworld.helloworld())#'1099'
