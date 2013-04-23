@@ -623,23 +623,24 @@ struct pycall_t
         return 0;
     }
     template<typename T>
-    static T call(const string& file_name_, const string& func_name_, pycall_arg_t& pyarg_)
+    static const T& call(const string& file_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
     {
         PyObject *pName = NULL, *pModule = NULL;
-        
+        string err_msg;
+
         pName   = PyString_FromString(file_name_.c_str());
         pModule = PyImport_Import(pName);
         Py_DECREF(pName);
         if (NULL == pModule)
         {
             if (PyErr_Occurred())
-                PyErr_Print();
-            fprintf(stderr, "Failed to load \"%s\"\n", file_name_.c_str());
-            return -1;
+                PyErr_Clear();
+            err_msg = "Failed to load ";
+            err_msg += file_name_;
+            throw runtime_error(err_msg.c_str());
+            return pyret.get_value();
         }
 
-        string err_msg;
-        pytype_tool_impl_t<T> pyret;
         call_func(pModule, func_name_, pyarg_, pyret, err_msg);
         Py_DECREF(pModule);
 
@@ -1090,35 +1091,40 @@ public:
     RET_V call(const string& file_, const string& func_)
     {
         pycall_arg_t args(0);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1>
     RET_V call(const string& file_, const string& func_, const ARG1& a1)
     {
         pycall_arg_t args(1);
         args.add(a1);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2>
     RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2)
     {
         pycall_arg_t args(2);
         args.add(a1).add(a2);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3>
     RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3)
     {
         pycall_arg_t args(3);
         args.add(a1).add(a2).add(a3);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
     RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4)
     {
         pycall_arg_t args(4);
         args.add(a1).add(a2).add(a3).add(a4);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
     RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
@@ -1126,7 +1132,8 @@ public:
     {
         pycall_arg_t args(5);
         args.add(a1).add(a2).add(a3).add(a4).add(a5);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
     RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
@@ -1134,7 +1141,8 @@ public:
     {
         pycall_arg_t args(6);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
     RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
@@ -1142,7 +1150,8 @@ public:
     {
         pycall_arg_t args(7);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
              typename ARG8>
@@ -1151,7 +1160,8 @@ public:
     {
         pycall_arg_t args(8);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
              typename ARG8, typename ARG9>
@@ -1160,7 +1170,8 @@ public:
     {
         pycall_arg_t args(9);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8).add(a9);
-        return pycall_t::call<RET_V>(file_, func_, args);
+        pytype_tool_impl_t<RET> pyret;
+        return pycall_t::call<RET_V>(file_, func_, args, pyret);
     }
 private:
     PyObject* init_method();
