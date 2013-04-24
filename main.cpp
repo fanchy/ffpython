@@ -72,7 +72,9 @@ void callpy(ffpython_t& ffpython)
 int main(int argc, char* argv[])
 {
     Py_Initialize();
-    	
+    string err;
+    pyops_t::traceback(err);
+
 	ffpython_t ffpython("helloworld");
     ffpython.reg(helloworld_impl, "helloworld", "print helloworld")
 			.reg_class<foo_t, PYCTOR()>("foo_t")

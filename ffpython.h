@@ -19,6 +19,11 @@ using namespace std;
 #endif
 
 
+//! 获取python异常信息
+struct pyops_t
+{
+    static int traceback(string& ret_);
+};
 struct cpp_void_t{};
 
 //! 用于抽取类型、类型对应的引用
@@ -1405,7 +1410,7 @@ struct pycall_t
             if (pValue != NULL) {
                 if (pyret_.parse_value(pValue))
                 {
-                    err_ = "value returned is not ";
+                    err_ += "value returned is not ";
                     err_ += pyret_.return_type();
                 }
                 Py_DECREF(pValue);
@@ -1413,13 +1418,14 @@ struct pycall_t
         }
         else
         {
-            fprintf(stderr, "Cannot find function \"%s\"\n", func_name_.c_str());
+            err_ += "Cannot find function ";
+            err_ += func_name_;
         }
 
         Py_XDECREF(pFunc);
         if (PyErr_Occurred())
         {
-            PyErr_Print();
+            pyops_t::traceback(err_);
             return 0;
         }
         return 0;
@@ -1435,10 +1441,7 @@ struct pycall_t
         Py_DECREF(pName);
         if (NULL == pModule)
         {
-            if (PyErr_Occurred())
-                PyErr_Clear();
-            err_msg = "Failed to load ";
-            err_msg += file_name_;
+            pyops_t::traceback(err_msg);
             throw runtime_error(err_msg.c_str());
             return pyret.get_value();
         }
@@ -1448,8 +1451,6 @@ struct pycall_t
 
         if (!err_msg.empty())
         {
-            if (PyErr_Occurred())
-                PyErr_Clear();
             throw runtime_error(err_msg.c_str());
         }
         return pyret.get_value();
@@ -3177,5 +3178,59 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
         return pyext_return_tool_t<RET>::route_method_call(self->obj, f, a1, a2, a3, a4, a5, a6, a7, a8, a9);;
     }
 };
+
+//! 获取python异常信息
+int pyops_t::traceback(string& ret_)
+{
+    PyObject* err = PyErr_Occurred();
+
+    if (err != NULL) {
+        PyObject *ptype, *pvalue, *ptraceback;
+        PyObject *pystr, *module_name, *pyth_module, *pyth_func;
+        char *str;
+
+        PyErr_Fetch(&ptype, &pvalue, &ptraceback);
+        pystr = PyObject_Str(pvalue);
+        if (pystr)
+        {
+            str = PyString_AsString(pystr);
+            ret_ += str;//! error_description = strdup(str);
+            ret_ += "\n";
+            Py_DECREF(pystr);
+        }
+        /* See if we can get a full traceback */
+        module_name = PyString_FromString("traceback");
+        pyth_module = PyImport_Import(module_name);
+        Py_DECREF(module_name);
+
+        if (pyth_module == NULL) {
+            ret_ += "traceback can not import";//full_backtrace = NULL;
+            return -1;
+        }
+
+        pyth_func = PyObject_GetAttrString(pyth_module, "format_exception");
+        if (pyth_func && PyCallable_Check(pyth_func)) {
+            PyObject *pyth_val;
+
+            pyth_val = PyObject_CallFunctionObjArgs(pyth_func, ptype, pvalue, ptraceback, NULL);
+            if (pyth_val && true == PyList_Check(pyth_val))
+            {
+                int n = PyList_Size(pyth_val);
+                for (int i = 0; i < n; ++i)
+                {
+                    PyObject* tmp_str = PyList_GetItem(pyth_val, i);
+                    ret_ += PyString_AsString(tmp_str);
+                }
+            }
+            Py_XDECREF(pyth_val);
+        }
+        Py_XDECREF(pyth_func);
+        Py_DECREF(pyth_module);
+        PyErr_Clear();
+        return 0;
+    }
+
+    return -1;
+}
 
 #endif
