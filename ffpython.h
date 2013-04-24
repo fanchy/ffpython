@@ -208,14 +208,22 @@ struct pyclass_base_info_t
         PyObject_HEAD
             T* obj;
         bool forbid_release;
+		void disable_auto_release(){ forbid_release = true; }
+		void release()
+		{
+			if (obj)
+			{
+				delete obj;
+				obj = NULL;
+			}
+		}
     };
 
     static void free_obj(obj_data_t* self)
     {
         if  (false == self->forbid_release && self->obj)
         {
-            delete self->obj;
-            self->obj = NULL;
+            self->release();
         }
         self->ob_type->tp_free((PyObject*)self);
     }
@@ -225,7 +233,12 @@ struct pyclass_base_info_t
         obj_data_t *self = (obj_data_t *)type->tp_alloc(type, 0);
         return (PyObject *)self;
     }
-
+	static PyObject *release(PyTypeObject *type, PyObject *args)
+    {
+        obj_data_t *self = (obj_data_t *)type;
+		self->release();
+		Py_RETURN_TRUE;
+    }
     static static_pytype_info_t pytype_info;
 };
 template<typename T>
@@ -304,6 +317,7 @@ public:
     pyobj_alloc_t ctor;
 
     //!  member functions
+	PyCFunction      		delete_func;
     vector<method_info_t>	methods_info;
     //! property 
     vector<property_info_t>	propertys_info;
@@ -408,6 +422,9 @@ public:
         tmp.option_args_num = pyext_func_traits_t<CTOR>::option_args_num();
         tmp.static_pytype_info = &(pyclass_base_info_t<T>::pytype_info);
 		m_all_pyclass.push_back(tmp);
+
+		//! 注册析构函数,python若不调用析构函数,当对象被gc时自动调用
+		tmp.delete_func = (PyCFunction)pyclass_base_info_t<T>::release;
 		return m_all_pyclass.back();
 	}
 
@@ -660,7 +677,12 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
             m_all_pyclass[i].pymethod_def.push_back(tmp);
 
         }
-
+		 PyMethodDef tmp_del = {"delete",
+                m_all_pyclass[i].delete_func,
+                METH_VARARGS,
+                "delete obj"
+            };
+            m_all_pyclass[i].pymethod_def.push_back(tmp_del);
         PyMethodDef tmp_method_def = {NULL};
         m_all_pyclass[i].pymethod_def.push_back(tmp_method_def);
 
@@ -742,7 +764,6 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
             "\t\t\tself.obj = assign_obj_\n"
             "\t\t\treturn\n"
             "\t\tself.obj = %s(0,(%s))\n"
-
             ,mod_name_.c_str(),
             m_all_pyclass[i].class_name.c_str(),
             "",//! TODO
@@ -751,8 +772,14 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
             m_all_pyclass[i].class_reel_name_with_mod.c_str(),
             m_all_pyclass[i].class_reel_name_with_mod.c_str(), str_init_args.str().c_str()
             );
-
+        
         string gen_class_str = buff;
+		SAFE_SPRINTF(buff, sizeof(buff),
+            "\tdef delete(self):\n"//! 定义init函数
+				"\t\t'''delete obj'''\n"
+				"\t\tself.obj.delete()\n");
+		gen_class_str += buff;
+		//! 增加析构函数
         //! 增加属性
         for (size_t c = 0; c < m_all_pyclass[i].propertys_info.size(); ++c)
         {
@@ -837,7 +864,7 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
             m_all_pyclass[i].class_name.c_str()
             );
         gen_class_str += buff;
-        //printf(gen_class_str.c_str());
+        printf(gen_class_str.c_str());
         PyRun_SimpleString(gen_class_str.c_str());
     }
     return 0;
@@ -971,7 +998,7 @@ struct pytype_traits_t<const T*>
             pyclass_base_info_t<T>::obj_data_t* pdest_obj = (pyclass_base_info_t<T>::obj_data_t*)palloc;
             //pdest_obj->obj = val_;
             ::memcpy(&pdest_obj->obj, &val_, sizeof(pdest_obj->obj));
-            pdest_obj->forbid_release = true;
+            pdest_obj->disable_auto_release();
             PyTuple_SetItem(pArgs, pyclass_base_info_t<T>::pytype_info.total_args_num, palloc);
             pValue = PyObject_CallObject(pyclass, pArgs);
         }
