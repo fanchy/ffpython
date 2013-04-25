@@ -91,6 +91,8 @@ int main(int argc, char* argv[])
 
     try
     {
+        ffpython.set_global_var("fftest", "var", "Ohfuck");
+        printf("global var[%s]\n", ffpython.get_global_var<string>("fftest", "var").c_str());
 	    callpy(ffpython);
     }
     catch(exception& e_)

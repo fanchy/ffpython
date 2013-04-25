@@ -437,90 +437,146 @@ public:
 
     //! 调用python函数，最多支持9个参数
     template<typename RET>
-    RET_V call(const string& file_, const string& func_)
+    RET_V call(const string& mod_name_, const string& func_)
     {
         pycall_arg_t args(0);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1)
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1)
     {
         pycall_arg_t args(1);
         args.add(a1);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2)
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2)
     {
         pycall_arg_t args(2);
         args.add(a1).add(a2);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3)
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3)
     {
         pycall_arg_t args(3);
         args.add(a1).add(a2).add(a3);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4)
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4)
     {
         pycall_arg_t args(4);
         args.add(a1).add(a2).add(a3).add(a4);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
                 const ARG5& a5)
     {
         pycall_arg_t args(5);
         args.add(a1).add(a2).add(a3).add(a4).add(a5);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
                 const ARG5& a5,const ARG6& a6)
     {
         pycall_arg_t args(6);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
                 const ARG5& a5,const ARG6& a6,const ARG7& a7)
     {
         pycall_arg_t args(7);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
              typename ARG8>
-    RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
                 const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8)
     {
         pycall_arg_t args(8);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
              typename ARG8, typename ARG9>
-        RET_V call(const string& file_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+        RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
         const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8, const ARG9& a9)
     {
         pycall_arg_t args(9);
         args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8).add(a9);
         pytype_tool_impl_t<RET_V> pyret;
-        return pycall_t::call<RET_V>(file_, func_, args, pyret);
+        return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
+    }
+    //! 获取模块中变量的值
+    template<typename RET>
+    RET_V get_global_var(const string& mod_name_, const string& var_name_)
+    {
+        PyObject *pName = NULL, *pModule = NULL;
+        string err_msg;
+
+        pName   = PyString_FromString(mod_name_.c_str());
+        pModule = PyImport_Import(pName);
+        Py_DECREF(pName);
+        if (NULL == pModule)
+        {
+            pyops_t::traceback(err_msg);
+            throw runtime_error(err_msg.c_str());
+        }
+
+        pytype_tool_impl_t<RET_V> pyret;
+        PyObject *pvalue = PyObject_GetAttrString(pModule, var_name_.c_str());
+        Py_DECREF(pModule);
+
+        if (!pvalue)
+        {
+            pyops_t::traceback(err_msg);
+            throw runtime_error(err_msg.c_str());
+        }
+
+        if (pyret.parse_value(pvalue))
+        {
+            Py_XDECREF(pvalue);
+            throw runtime_error("type invalid");
+        }
+        Py_XDECREF(pvalue);
+        return pyret.get_value();
+    }
+    //! 设置模块中变量的值
+    template<typename T>
+    int set_global_var(const string& mod_name_, const string& var_name_, T val_)
+    {
+        PyObject *pName = NULL, *pModule = NULL;
+        string err_msg;
+
+        pName   = PyString_FromString(mod_name_.c_str());
+        pModule = PyImport_Import(pName);
+        Py_DECREF(pName);
+        if (NULL == pModule)
+        {
+            pyops_t::traceback(err_msg);
+            throw runtime_error(err_msg.c_str());
+        }
+
+        PyObject* pval = pytype_traits_t<T>::pyobj_from_cppobj(val_);
+        int ret = PyObject_SetAttrString(pModule, var_name_.c_str(), pval);
+        Py_DECREF(pModule);
+
+        return ret != -1? 0: -1;
     }
 private:
     PyObject* init_method();
@@ -868,7 +924,7 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
             m_all_pyclass[i].class_name.c_str()
             );
         gen_class_str += buff;
-        printf(gen_class_str.c_str());
+        //printf(gen_class_str.c_str());
         PyRun_SimpleString(gen_class_str.c_str());
     }
     return 0;
@@ -943,29 +999,31 @@ struct pyoption_traits_t<pyoption_t<T> >
 
 
 //! pytype_traits_t 封装 PyLong_FromLong 相关的操作，用于为调用python生成参数
-template<typename T>
-struct pytype_traits_t
+
+template<>//typename T>
+struct pytype_traits_t<long>
 {
-    static PyObject* pyobj_from_cppobj(const T& val_)
+    static PyObject* pyobj_from_cppobj(const long& val_)
     {
         return PyLong_FromLong(long(val_));
     }
-    static int pyobj_to_cppobj(PyObject *pvalue_, T& m_ret)
+    static int pyobj_to_cppobj(PyObject *pvalue_, long& m_ret)
     {
         if (true == PyLong_Check(pvalue_))
         {
-            m_ret = (T)PyLong_AsLong(pvalue_);
+            m_ret = (long)PyLong_AsLong(pvalue_);
             return 0;
         }
         else if (true == PyInt_Check(pvalue_))
         {
-            m_ret = (T)PyInt_AsLong(pvalue_);
+            m_ret = (long)PyInt_AsLong(pvalue_);
             return 0;
         }
         return -1;
     }
     static const char* get_typename() { return "long";}
 };
+
 
 template<typename T>
 struct pytype_traits_t<const T*>
@@ -1046,28 +1104,78 @@ struct pytype_traits_t<T*>
 };
 
 template<>
-struct pytype_traits_t<int>
+struct pytype_traits_t<const char*>
 {
-    static PyObject* pyobj_from_cppobj(const int& val_)
+    static PyObject* pyobj_from_cppobj(const char*& val_)
     {
-        return PyInt_FromLong(long(val_));
+        return PyString_FromString(val_);
     }
-    static int pyobj_to_cppobj(PyObject *pvalue_, int& m_ret)
+    /*
+    static int pyobj_to_cppobj(PyObject *pvalue_, char*& m_ret)
     {
-        if (true == PyLong_Check(pvalue_))
+        if (true == PyString_Check(pvalue_))
         {
-            m_ret = (int)PyLong_AsLong(pvalue_);
-            return 0;
-        }
-        else if (true == PyInt_Check(pvalue_))
-        {
-            m_ret = (int)PyInt_AsLong(pvalue_);
+            m_ret = PyString_AsString(pvalue_);
             return 0;
         }
         return -1;
     }
-    static const char* get_typename() { return "int";}
+    */
+    static const char* get_typename() { return "string";}
 };
+
+template<>
+struct pytype_traits_t<char*>
+{
+    static PyObject* pyobj_from_cppobj(const char*& val_)
+    {
+        return PyString_FromString(val_);
+    }
+    /*
+    static int pyobj_to_cppobj(PyObject *pvalue_, char*& m_ret)
+    {
+        if (true == PyString_Check(pvalue_))
+        {
+            m_ret = PyString_AsString(pvalue_);
+            return 0;
+        }
+        return -1;
+    }
+    */
+    static const char* get_typename() { return "string";}
+};
+
+#define  IMPL_INT_CODE(X) \
+template<> \
+struct pytype_traits_t<X> \
+{ \
+    static PyObject* pyobj_from_cppobj(const X& val_) \
+    { \
+        return PyInt_FromLong(long(val_)); \
+    } \
+    static int pyobj_to_cppobj(PyObject *pvalue_, X& m_ret) \
+    { \
+        if (true == PyLong_Check(pvalue_)) \
+        { \
+            m_ret = (X)PyLong_AsLong(pvalue_); \
+            return 0; \
+        } \
+        else if (true == PyInt_Check(pvalue_)) \
+        { \
+            m_ret = (X)PyInt_AsLong(pvalue_); \
+            return 0; \
+        } \
+        return -1; \
+    } \
+    static const char* get_typename() { return #X;} \
+};
+
+IMPL_INT_CODE(int)
+IMPL_INT_CODE(unsigned int)
+IMPL_INT_CODE(short)
+IMPL_INT_CODE(unsigned short)
+IMPL_INT_CODE(char)
+IMPL_INT_CODE(unsigned char)
 
 template<>
 struct pytype_traits_t<bool>
@@ -1122,25 +1230,6 @@ struct pytype_traits_t<string>
         return PyString_FromString(val_.c_str());
     }
     static int pyobj_to_cppobj(PyObject *pvalue_, string& m_ret)
-    {
-        if (true == PyString_Check(pvalue_))
-        {
-            m_ret = PyString_AsString(pvalue_);
-            return 0;
-        }
-        return -1;
-    }
-    static const char* get_typename() { return "string";}
-};
-
-template<>
-struct pytype_traits_t<char*>
-{
-    static PyObject* pyobj_from_cppobj(const char* val_)
-    {
-        return PyString_FromString(val_);
-    }
-    static int pyobj_to_cppobj(PyObject *pvalue_, char*& m_ret)
     {
         if (true == PyString_Check(pvalue_))
         {
