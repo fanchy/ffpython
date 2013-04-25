@@ -252,6 +252,9 @@ struct pyclass_ctor_tool_t;
 template<typename T>
 struct pyclass_method_gen_t;
 
+//! 防止出现指针为NULL调用出错
+#define  NULL_PTR_GUARD(X) if (NULL == X) {PyErr_SetString(PyExc_TypeError, "obj data ptr NULL");return NULL;}
+
 //! 用于生成python 的getter和setter接口，适配于c++ class的成员变量
 template <typename CLASS_TYPE, typename RET>
 struct pyclass_member_func_gen_t
@@ -263,6 +266,7 @@ struct pyclass_member_func_gen_t
     {
         property_ptr_t property_ptr;
         ::memcpy(&property_ptr, &closure, sizeof(closure));
+        NULL_PTR_GUARD(self->obj);
         CLASS_TYPE* p = self->obj;
         return pytype_traits_t<RET>::pyobj_from_cppobj(p->*property_ptr);
     }
@@ -421,10 +425,10 @@ public:
         tmp.args_num        = pyext_func_traits_t<CTOR>::args_num();
         tmp.option_args_num = pyext_func_traits_t<CTOR>::option_args_num();
         tmp.static_pytype_info = &(pyclass_base_info_t<T>::pytype_info);
+        //! 注册析构函数,python若不调用析构函数,当对象被gc时自动调用
+        tmp.delete_func = (PyCFunction)pyclass_base_info_t<T>::release;
 		m_all_pyclass.push_back(tmp);
 
-		//! 注册析构函数,python若不调用析构函数,当对象被gc时自动调用
-		tmp.delete_func = (PyCFunction)pyclass_base_info_t<T>::release;
 		return m_all_pyclass.back();
 	}
 
@@ -1555,6 +1559,7 @@ struct pyext_tool_t
     long      m_func_addr;
 };
 
+
 //! 用于扩展python，生成pyobject类型的返回值给python
 template<typename T>
 struct pyext_return_tool_t
@@ -1620,42 +1625,50 @@ struct pyext_return_tool_t
     template<typename O, typename F>
     static PyObject* route_method_call(O o, F f)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)());
     }
     template<typename O, typename F, typename ARG1>
     static PyObject* route_method_call(O o, F f, ARG1& a1)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value));
     }
     template<typename O, typename F, typename ARG1, typename ARG2>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value));
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value));
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value));
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value));
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value));
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
         typename ARG7>
         static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
             a7.value));
     }
@@ -1663,6 +1676,7 @@ struct pyext_return_tool_t
         typename ARG7, typename ARG8>
         static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
             a7.value, a8.value));
     }
@@ -1670,6 +1684,7 @@ struct pyext_return_tool_t
         typename ARG7, typename ARG8, typename ARG9>
         static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8, ARG9& a9)
     {
+        NULL_PTR_GUARD(o);
         return pytype_traits_t<T>::pyobj_from_cppobj((o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
             a7.value, a8.value, a9.value));
     }
