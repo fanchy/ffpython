@@ -381,6 +381,8 @@ class ffpython_t
 	};
 
 public:
+    static int init_py();
+    static int final_py();
     ffpython_t(const string& mod_name_, string doc_ = ""):m_mod_name(mod_name_),m_mod_doc(doc_){}
 
     //! ×¢²ástatic function£¬
@@ -3363,5 +3365,14 @@ int pyops_t::traceback(string& ret_)
 
     return -1;
 }
-
+int ffpython_t::init_py()
+{
+    Py_Initialize();
+    return 0;
+}
+int ffpython_t::final_py()
+{
+    Py_Finalize();
+    return 0;
+}
 #endif

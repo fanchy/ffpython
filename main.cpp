@@ -69,6 +69,11 @@ void callpy(ffpython_t& ffpython)
     printf("pyret =%d\n", value);
 }
 
+void test_get_global()
+{
+
+}
+
 int main(int argc, char* argv[])
 {
     Py_Initialize();
