@@ -1790,126 +1790,126 @@ struct pyext_return_tool_t<void>
     static PyObject* route_call(F f)
     {
         f();
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1>
     static PyObject* route_call(F f, ARG1& a1)
     {
         f(a1.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2>
     static PyObject* route_call(F f, ARG1& a1, ARG2& a2)
     {
         f(a1.value, a2.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2, typename ARG3>
     static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3)
     {
         f(a1.value, a2.value, a3.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
     static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4)
     {
         f(a1.value, a2.value, a3.value, a4.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
     static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5)
     {
         f(a1.value, a2.value, a3.value, a4.value, a5.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
     static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6)
     {
         f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
     static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7)
     {
         f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
         typename ARG8>
         static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8)
     {
         f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
         typename ARG8, typename ARG9>
         static PyObject* route_call(F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8, ARG9& a9)
     {
         f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value, a9.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F>
     static PyObject* route_method_call(O o, F f)
     {
         (o->*f)();
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1>
     static PyObject* route_method_call(O o, F f, ARG1& a1)
     {
         (o->*f)(a1.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2)
     {
         (o->*f)(a1.value, a2.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3)
     {
         (o->*f)(a1.value, a2.value, a3.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4)
     {
         (o->*f)(a1.value, a2.value, a3.value, a4.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5)
     {
         (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
     static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6)
     {
         (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
         typename ARG7>
         static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7)
     {
         (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
         typename ARG7, typename ARG8>
         static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8)
     {
         (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
     template<typename O, typename F, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6,
         typename ARG7, typename ARG8, typename ARG9>
         static PyObject* route_method_call(O o, F f, ARG1& a1, ARG2& a2, ARG3& a3, ARG4& a4, ARG5& a5, ARG6& a6, ARG7& a7, ARG8& a8,  ARG9& a9)
     {
         (o->*f)(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value, a7.value, a8.value, a9.value);
-        return Py_RETURN_NONE;
+         Py_RETURN_NONE;
     }
 };
 
