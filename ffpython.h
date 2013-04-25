@@ -1301,8 +1301,8 @@ struct pytype_traits_t<vector<T> >
             int n = PyTuple_Size(pvalue_);
             for (int i = 0; i < n; ++i)
             {
-                T tmp();
-                if (pytype_traits_t::pyobj_to_cppobj(PyTuple_GetItem(pvalue_, i), tmp))
+                pytype_tool_impl_t<T> ret_tool;
+                if (ret_tool.parse_value(PyTuple_GetItem(pvalue_, i)))
                 {
                     return -1;
                 }
@@ -1315,11 +1315,12 @@ struct pytype_traits_t<vector<T> >
             int n = PyList_Size(pvalue_);
             for (int i = 0; i < n; ++i)
             {
+                pytype_tool_impl_t<T> ret_tool;
                 if (ret_tool.parse_value(PyList_GetItem(pvalue_, i)))
                 {
                     return -1;
                 }
-                m_ret.push_back(tmp);
+                m_ret.push_back(ret_tool.get_value());
             }
             return 0;
         }
@@ -1334,27 +1335,27 @@ struct pytype_traits_t<list<T> >
     {
         size_t n = val_.size();
         PyObject* ret = PyList_New(n);
+        int i = 0;
         for (list<T>::const_iterator it = val_.begin(); it != val_.end(); ++it)
         {
-            PyList_SetItem(ret, i, pytype_traits_t<T>::pyobj_from_cppobj(*it));
+            PyList_SetItem(ret, i++, pytype_traits_t<T>::pyobj_from_cppobj(*it));
         }
         return ret;
     }
-    static int pyobj_to_cppobj(PyObject *pvalue_)
+    static int pyobj_to_cppobj(PyObject *pvalue_, list<T>& m_ret)
     {
-        m_ret.clear();
         pytype_tool_impl_t<T> ret_tool;
         if (true == PyTuple_Check(pvalue_))
         {
             int n = PyTuple_Size(pvalue_);
             for (int i = 0; i < n; ++i)
             {
-                T tmp();
-                if (pytype_traits_t::pyobj_to_cppobj(PyTuple_GetItem(pvalue_, i), tmp))
+                pytype_tool_impl_t<T> ret_tool;
+                if (ret_tool.parse_value(PyTuple_GetItem(pvalue_, i)))
                 {
                     return -1;
                 }
-                m_ret.push_back(tmp);
+                m_ret.push_back(ret_tool.get_value());
             }
             return 0;
         }
@@ -1363,6 +1364,7 @@ struct pytype_traits_t<list<T> >
             int n = PyList_Size(pvalue_);
             for (int i = 0; i < n; ++i)
             {
+                pytype_tool_impl_t<T> ret_tool;
                 if (ret_tool.parse_value(PyList_GetItem(pvalue_, i)))
                 {
                     return -1;

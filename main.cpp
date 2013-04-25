@@ -69,8 +69,27 @@ void callpy(ffpython_t& ffpython)
     printf("pyret =%d\n", value);
 }
 
-void test_get_global()
+#define  TestGuard(X, Y) printf("-------%s begin-----------\n", X);try {Y;}catch(exception& e_){printf("exception<%s>\n", e_.what());}\
+        printf("-------%s end-----------\n", X);
+
+void test_base(ffpython_t& ffpython)
 {
+    printf("sys.version=%s\n", ffpython.get_global_var<string>("sys", "version").c_str());
+    ffpython.set_global_var("fftest", "global_var", "OhNice");
+    printf("fftest.global_var=%s\n", ffpython.get_global_var<string>("fftest", "global_var").c_str());
+    printf("time.asctime=%s\n", ffpython.call<string>("time", "asctime").c_str());
+    int a1 = 100; float a2 = 3.14f; string a3 = "OhWell";
+    ffpython.call<void>("fftest", "test_base", a1, a2, a3);
+}
+
+void test_stl(ffpython_t& ffpython)
+{
+    vector<int> a1;a1.push_back(100);a1.push_back(200);
+    list<string> a2; a2.push_back("Oh");a2.push_back("Nice");
+    vector<list<string> > a3;a3.push_back(a2);
+    typedef map<string, list<vector<int> > > ret_t;
+
+    ret_t val = ffpython.call<ret_t>("fftest", "test_stl", a1, a2, a3);
 
 }
 
@@ -94,6 +113,8 @@ int main(int argc, char* argv[])
     PyRun_SimpleString("from time import time,ctime\n"
                      "print 'Today is',ctime(time())\n");
 
+    TestGuard("test_base", test_base(ffpython));
+    TestGuard("test_stl", test_stl(ffpython));
     try
     {
         ffpython.set_global_var("fftest", "var", "Ohfuck");
