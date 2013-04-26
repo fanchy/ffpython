@@ -3321,47 +3321,89 @@ int pyops_t::traceback(string& ret_)
     PyObject* err = PyErr_Occurred();
 
     if (err != NULL) {
-        PyObject *ptype, *pvalue, *ptraceback;
-        PyObject *pystr, *module_name, *pyth_module, *pyth_func;
-        char *str;
-
+        PyObject *ptype = NULL, *pvalue = NULL, *ptraceback = NULL;
+        PyObject *pyth_module = NULL, *pyth_func = NULL;
+        
         PyErr_Fetch(&ptype, &pvalue, &ptraceback);
-        pystr = PyObject_Str(pvalue);
-        if (pystr)
+        if (pvalue)
         {
-            str = PyString_AsString(pystr);
-            ret_ += str;//! error_description = strdup(str);
-            ret_ += "\n";
-            Py_DECREF(pystr);
+            if (true == PyList_Check(pvalue))
+            {
+                int n = PyList_Size(pvalue);
+                for (int i = 0; i < n; ++i)
+                {
+                    PyObject *pystr = PyObject_Str(PyList_GetItem(pvalue, i));
+                    ret_ += PyString_AsString(pystr);
+                    ret_ += "\n";
+                    Py_DECREF(pystr);
+                }
+            }
+            if (true == PyTuple_Check(pvalue))
+            {
+                int n = PyTuple_Size(pvalue);
+                for (int i = 0; i < n; ++i)
+                {
+                    PyObject* tmp_str = PyTuple_GetItem(pvalue, i);
+                    if (true == PyTuple_Check(tmp_str))
+                    {
+                        int m = PyTuple_Size(tmp_str);
+                        for (int j = 0; j < m; ++j)
+                        {
+                            PyObject *pystr = PyObject_Str(PyTuple_GetItem(tmp_str, j));
+                            ret_ += PyString_AsString(pystr);
+                            ret_ += ",";
+                            Py_DECREF(pystr);
+                        }
+                    }
+                    else
+                    {
+                        PyObject *pystr = PyObject_Str(tmp_str);
+                        ret_ += PyString_AsString(pystr);
+                        Py_DECREF(pystr);
+                    }
+                    ret_ += "\n";
+                }
+            }
+            else
+            {
+                PyObject *pystr = PyObject_Str(pvalue);
+                if (pystr)
+                {
+                    ret_ += PyString_AsString(pystr);
+                    ret_ += "\n";
+                    Py_DECREF(pystr);
+                }
+            }
         }
+        
         /* See if we can get a full traceback */
-        module_name = PyString_FromString("traceback");
+        PyObject *module_name = PyString_FromString("traceback");
         pyth_module = PyImport_Import(module_name);
         Py_DECREF(module_name);
 
-        if (pyth_module == NULL) {
-            ret_ += "traceback can not import";//full_backtrace = NULL;
-            return -1;
-        }
-
-        pyth_func = PyObject_GetAttrString(pyth_module, "format_exception");
-        if (pyth_func && PyCallable_Check(pyth_func)) {
-            PyObject *pyth_val;
-
-            pyth_val = PyObject_CallFunctionObjArgs(pyth_func, ptype, pvalue, ptraceback, NULL);
-            if (pyth_val && true == PyList_Check(pyth_val))
-            {
-                int n = PyList_Size(pyth_val);
-                for (int i = 0; i < n; ++i)
+        if (pyth_module && ptype && pvalue && ptraceback)
+        {
+            pyth_func = PyObject_GetAttrString(pyth_module, "format_exception");
+            if (pyth_func && PyCallable_Check(pyth_func)) {
+                PyObject *pyth_val = PyObject_CallFunctionObjArgs(pyth_func, ptype, pvalue, ptraceback, NULL);
+                if (pyth_val && true == PyList_Check(pyth_val))
                 {
-                    PyObject* tmp_str = PyList_GetItem(pyth_val, i);
-                    ret_ += PyString_AsString(tmp_str);
+                    int n = PyList_Size(pyth_val);
+                    for (int i = 0; i < n; ++i)
+                    {
+                        PyObject* tmp_str = PyList_GetItem(pyth_val, i);
+                        ret_ += PyString_AsString(tmp_str);
+                        ret_ += "TTTTTTTTTTT\n";
+                    }
                 }
+                Py_XDECREF(pyth_val);
             }
-            Py_XDECREF(pyth_val);
         }
         Py_XDECREF(pyth_func);
-        Py_DECREF(pyth_module);
+        Py_XDECREF(pyth_module);
+        Py_XDECREF(ptype);
+        Py_XDECREF(pvalue);
+        Py_XDECREF(ptraceback);
         PyErr_Clear();
         return 0;
     }
