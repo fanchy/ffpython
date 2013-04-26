@@ -173,7 +173,10 @@ struct cpp_to_pyclass_reg_info_t
     {
         inherit_info_map_t& inherit_info = get_all_info();
         inherit_info_t& tmp = inherit_info[class_];
-        
+        if (tmp.pytype_def && PyObject_TypeCheck(pysrc, tmp.pytype_def))
+        {
+            return true;
+        }
         for (set<PyTypeObject*>::iterator it = tmp.all_child.begin(); it != tmp.all_child.end(); ++it)
         {
             if (*it && PyObject_TypeCheck(pysrc, *it))
@@ -671,7 +674,7 @@ PyObject* ffpython_t::init_method()
         SAFE_SPRINTF(buff, sizeof(buff), 
             "def %s_%s(%s):\n"
             "\t'''%s'''\n"
-            "\treturn %s.%s(%ld,%s)\n"
+            "\treturn %s.%s(%ld,(%s))\n"
             "import %s\n"
             "%s.%s = %s_%s\n"
             "%s_%s = None\n",
@@ -3392,8 +3395,14 @@ int pyops_t::traceback(string& ret_)
                     for (int i = 0; i < n; ++i)
                     {
                         PyObject* tmp_str = PyList_GetItem(pyth_val, i);
-                        ret_ += PyString_AsString(tmp_str);
-                        ret_ += "TTTTTTTTTTT\n";
+                        PyObject *pystr = PyObject_Str(tmp_str);
+                        if (pystr)
+                        {
+                            ret_ += PyString_AsString(pystr);
+  
+                            Py_DECREF(pystr);
+                        }
+                        ret_ += "\n";
                     }
                 }
                 Py_XDECREF(pyth_val);
