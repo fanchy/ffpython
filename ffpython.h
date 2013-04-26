@@ -1523,7 +1523,7 @@ private:
 //! 封装调用python函数
 struct pycall_t
 {
-    static int call_func(PyObject *pModule, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
+    static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
     {
         PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
         if (pFunc && PyCallable_Check(pFunc)) {
@@ -1536,6 +1536,7 @@ struct pycall_t
                 {
                     err_ += "value returned is not ";
                     err_ += pyret_.return_type();
+                    err_ += string(" ") + func_name_  + " in " + mod_name_;
                 }
                 Py_DECREF(pValue);
             }
@@ -1543,7 +1544,7 @@ struct pycall_t
         else
         {
             err_ += "Cannot find function ";
-            err_ += func_name_;
+            err_ += func_name_ + " in " + mod_name_ + ",";
         }
 
         Py_XDECREF(pFunc);
@@ -1555,12 +1556,12 @@ struct pycall_t
         return 0;
     }
     template<typename T>
-    static const T& call(const string& file_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
+    static const T& call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
     {
         PyObject *pName = NULL, *pModule = NULL;
         string err_msg;
 
-        pName   = PyString_FromString(file_name_.c_str());
+        pName   = PyString_FromString(mod_name_.c_str());
         pModule = PyImport_Import(pName);
         Py_DECREF(pName);
         if (NULL == pModule)
@@ -1570,7 +1571,7 @@ struct pycall_t
             return pyret.get_value();
         }
 
-        call_func(pModule, func_name_, pyarg_, pyret, err_msg);
+        call_func(pModule, mod_name_, func_name_, pyarg_, pyret, err_msg);
         Py_DECREF(pModule);
 
         if (!err_msg.empty())

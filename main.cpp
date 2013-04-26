@@ -20,10 +20,36 @@ void test_stl(ffpython_t& ffpython)
     vector<int> a1;a1.push_back(100);a1.push_back(200);
     list<string> a2; a2.push_back("Oh");a2.push_back("Nice");
     vector<list<string> > a3;a3.push_back(a2);
+    ffpython.call<bool>("fftest", "test_stl", a1, a2, a3);
+
+}
+void test_return_stl(ffpython_t& ffpython)
+{
     typedef map<string, list<vector<int> > > ret_t;
+    ret_t val = ffpython.call<ret_t>("fftest", "test_return_stl");
+}
 
-    ret_t val = ffpython.call<ret_t>("fftest", "test_stl", a1, a2, a3);
+static int print_val(int a1, float a2, const string& a3, const vector<double>& a4)
+{
+    printf("%s[%d,%f,%s,%d]\n", __FUNCTION__, a1, a2, a3.c_str(), a4.size());
+    return 0;
+}
+struct ops_t
+{
+    static list<int> return_stl()
+    {
+        list<int> ret;ret.push_back(1024);
+        printf("%s\n", __FUNCTION__);
+        return ret;
+    }
+};
 
+void test_reg_function()
+{
+    ffpython_t ffpython("ext1");
+    ffpython.reg(&print_val, "print_val")
+            .reg(&ops_t::return_stl, "return_stl");
+    ffpython.call<void>("fftest", "test_reg_function");
 }
 
 class foo_t
@@ -33,6 +59,10 @@ public:
 	{
 		printf("%s\n", __FUNCTION__);
 	}
+    virtual ~foo_t()
+    {
+        printf("%s\n", __FUNCTION__);
+    }
 	int get_value() const { return m_value; }
 	void set_value(int v_) { m_value = v_; }
 	void test_stl(map<string, list<int> >& v_) 
@@ -42,15 +72,62 @@ public:
 	int m_value;
 };
 
-void test_register_class()
+void test_register_base_class()
 {
-	ffpython_t ffpython("ext1");
+	ffpython_t ffpython("ext2");
 	ffpython.reg_class<foo_t, PYCTOR(int)>("foo_t")
 			.reg(&foo_t::get_value, "get_value")
 			.reg(&foo_t::set_value, "set_value")
 			.reg(&foo_t::test_stl, "test_stl")
             .reg_property(&foo_t::m_value, "m_value");
+
+    ffpython.call<void>("fftest", "test_register_base_class");
 };
+class dumy_t: public foo_t
+{
+public:
+    dumy_t(int v_):foo_t(v_)
+    {
+        printf("%s\n", __FUNCTION__);
+    }
+    ~dumy_t()
+    {
+        printf("%s\n", __FUNCTION__);
+    }
+    void dump() 
+    {
+        printf("%s\n", __FUNCTION__);
+    }
+};
+
+
+void test_register_inherit_class()
+{
+    ffpython_t ffpython("ext2");
+    ffpython.reg_class<dumy_t, PYCTOR(int)>("dumy_t", "dumy_t class inherit foo_t ctor <int>", "foo_t")
+        .reg(&dumy_t::dump, "dump");
+
+    ffpython.call<void>("fftest", "test_register_inherit_class");
+};
+
+void test_cpp_obj_to_py(ffpython_t& ffpython)
+{
+    foo_t tmp_foo(2013);
+    ffpython.call<void>("fftest", "test_cpp_obj_to_py", &tmp_foo);
+}
+
+static foo_t* obj_test(dumy_t* p)
+{
+    return p;
+}
+
+void test_cpp_obj_py_obj(ffpython_t& ffpython)
+{
+    foo_t tmp_foo(2013);
+    ffpython.reg(obj_test, "obj_test");
+    foo_t* p = ffpython.call<foo_t*>("fftest", "test_cpp_obj_to_py", &tmp_foo);
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -73,7 +150,11 @@ int main(int argc, char* argv[])
 
     TestGuard("test_base", test_base(ffpython));
     TestGuard("test_stl", test_stl(ffpython));
-
+    TestGuard("test_reg_function", test_reg_function());
+    TestGuard("test_register_inherit_class", test_register_inherit_class());
+    TestGuard("test_cpp_obj_to_py", test_cpp_obj_to_py(ffpython));
+    TestGuard("test_cpp_obj_py_obj", test_cpp_obj_py_obj(ffpython));
+    
 	system("pause");
 	Py_Finalize();
     
