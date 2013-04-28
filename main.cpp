@@ -47,10 +47,10 @@ struct ops_t
 
 void test_reg_function()
 {
-    ffpython_t ffpython("ext1");
+    ffpython_t ffpython;//("ext1");
     ffpython.reg(&print_val, "print_val")
             .reg(&ops_t::return_stl, "return_stl");
-    ffpython.init();
+    ffpython.init("ext1");
     ffpython.call<void>("fftest", "test_reg_function");
 }
 
@@ -111,7 +111,7 @@ void test_register_base_class(ffpython_t& ffpython)
 
     ffpython.reg(obj_test, "obj_test");
 
-    ffpython.init();
+    ffpython.init("ext2");
     ffpython.call<void>("fftest", "test_register_base_class");
 };
 
@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
     string err;
     pyops_t::traceback(err);
 
-    ffpython_t ffpython("ext2");
+    ffpython_t ffpython;//("ext2");
 
     TestGuard("test_base", test_base(ffpython));
     TestGuard("test_stl", test_stl(ffpython));

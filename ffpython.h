@@ -386,7 +386,6 @@ class ffpython_t
 public:
     static int init_py();
     static int final_py();
-    ffpython_t(const string& mod_name_, string doc_ = ""):m_mod_name(mod_name_),m_mod_doc(doc_){}
 
     //! 注册static function，
     template<typename T>
@@ -414,7 +413,7 @@ public:
             throw runtime_error("this type has been registed");
 
         pyclass_base_info_t<T>::pytype_info.class_name = class_name_;
-        pyclass_base_info_t<T>::pytype_info.mod_name   = m_mod_name;
+        //pyclass_base_info_t<T>::pytype_info.mod_name   = m_mod_name;
         pyclass_base_info_t<T>::pytype_info.total_args_num = pyext_func_traits_t<CTOR>::args_num() + 
                                                                      pyext_func_traits_t<CTOR>::option_args_num();
 
@@ -438,7 +437,7 @@ public:
 	}
 
     //! 将需要注册的函数、类型注册到python虚拟机
-    int init();
+    int init(const string& mod_name_, string doc_ = "");
 
     //! 调用python函数，最多支持9个参数
     template<typename RET>
@@ -585,7 +584,7 @@ public:
     }
 private:
     PyObject* init_method();
-    int init_pyclass(PyObject* m, const string& mod_name_);
+    int init_pyclass(PyObject* m);
 
     bool is_method_exist(const vector<pyclass_regigster_tool_t::method_info_t>& src_, const string& new_);
     bool is_property_exist(const vector<pyclass_regigster_tool_t::property_info_t>& src_, const string& new_);
@@ -602,10 +601,12 @@ private:
 	
 };
 
-int ffpython_t::init()
+int ffpython_t::init(const string& mod_name_, string doc_)
 {
+    m_mod_name = mod_name_;
+    m_mod_doc  = doc_;
     PyObject* m = init_method();
-    init_pyclass(m, m_mod_name);
+    init_pyclass(m);
     return 0;
 }
 
@@ -628,7 +629,7 @@ PyObject* ffpython_t::init_method()
         m_pymethod_defs.push_back(tmp);
     }
 
-    PyObject* m = Py_InitModule3(mod_name_.c_str(), &(m_pymethod_defs.front()), doc_.c_str());
+    PyObject* m = Py_InitModule3(m_mod_name.c_str(), &(m_pymethod_defs.front()), doc_.c_str());
 
     for (size_t i = 0; i < m_func_info.size(); ++i)
     {
@@ -678,12 +679,12 @@ PyObject* ffpython_t::init_method()
             "import %s\n"
             "%s.%s = %s_%s\n"
             "%s_%s = None\n",
-            mod_name_.c_str(), m_func_info[i].func_name.c_str(), pystr_args.c_str(),
+            m_mod_name.c_str(), m_func_info[i].func_name.c_str(), pystr_args.c_str(),
             m_func_info[i].doc.c_str(), 
-            mod_name_.c_str(), m_func_info[i].func_impl_name.c_str(), m_func_info[i].func_addr, pystr_args_only_name.c_str(),
-            mod_name_.c_str(),
-            mod_name_.c_str(), m_func_info[i].func_name.c_str(), mod_name_.c_str(), m_func_info[i].func_name.c_str(),
-            mod_name_.c_str(), m_func_info[i].func_name.c_str()
+            m_mod_name.c_str(), m_func_info[i].func_impl_name.c_str(), m_func_info[i].func_addr, pystr_args_only_name.c_str(),
+            m_mod_name.c_str(),
+            m_mod_name.c_str(), m_func_info[i].func_name.c_str(), m_mod_name.c_str(), m_func_info[i].func_name.c_str(),
+            m_mod_name.c_str(), m_func_info[i].func_name.c_str()
             );
 
         //printf(buff);
@@ -693,10 +694,11 @@ PyObject* ffpython_t::init_method()
     return m;
 }
 
-int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
+int ffpython_t::init_pyclass(PyObject* m)
 {
     for (size_t i = 0; i < m_all_pyclass.size(); ++i)
     {
+        m_all_pyclass[i].static_pytype_info->mod_name = m_mod_name;
         if (false == m_all_pyclass[i].inherit_name.empty())//! 存在基类
         {
             pyclass_regigster_tool_t* inherit_class = get_pyclass_info_by_name(m_all_pyclass[i].inherit_name);
@@ -751,8 +753,8 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
         PyMethodDef tmp_method_def = {NULL};
         m_all_pyclass[i].pymethod_def.push_back(tmp_method_def);
 
-        m_all_pyclass[i].class_name_with_mod = mod_name_ + "." + m_all_pyclass[i].class_name;
-        m_all_pyclass[i].class_reel_name_with_mod = mod_name_ + "." + m_all_pyclass[i].class_real_name;
+        m_all_pyclass[i].class_name_with_mod = m_mod_name + "." + m_all_pyclass[i].class_name;
+        m_all_pyclass[i].class_reel_name_with_mod = m_mod_name + "." + m_all_pyclass[i].class_real_name;
 
         PyTypeObject tmp_pytype_def = 
         {
@@ -829,7 +831,7 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
             "\t\t\tself.obj = assign_obj_\n"
             "\t\t\treturn\n"
             "\t\tself.obj = %s(0,(%s))\n"
-            ,mod_name_.c_str(),
+            ,m_mod_name.c_str(),
             m_all_pyclass[i].class_name.c_str(),
             "",//! TODO
             str_def_args.str().c_str(),
@@ -925,7 +927,7 @@ int ffpython_t::init_pyclass(PyObject* m, const string& mod_name_)
         SAFE_SPRINTF(buff, sizeof(buff), 
             "%s.%s = %s_\n"
             "%s_ = None\n",
-            mod_name_.c_str(), m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
+            m_mod_name.c_str(), m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
             m_all_pyclass[i].class_name.c_str()
             );
         gen_class_str += buff;
