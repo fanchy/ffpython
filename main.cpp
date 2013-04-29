@@ -1,5 +1,8 @@
 
+#ifdef _WIN32
 #include <cstdlib>
+#endif
+
 #include "ffpython.h"
 
 #define  TestGuard(X, Y) printf("-------%s begin-----------\n", X);try {Y;}catch(exception& e_){printf("exception<%s>\n", e_.what());}\
@@ -137,9 +140,8 @@ void test_cpp_obj_py_obj(ffpython_t& ffpython)
 int main(int argc, char* argv[])
 {
     Py_Initialize();
-    string err;
-    pyops_t::traceback(err);
 
+	ffpython_t::add_path("./");
     ffpython_t ffpython;//("ext2");
 
     TestGuard("test_base", test_base(ffpython));
@@ -151,21 +153,10 @@ int main(int argc, char* argv[])
     TestGuard("test_cpp_obj_to_py", test_cpp_obj_to_py(ffpython));
     TestGuard("test_cpp_obj_py_obj", test_cpp_obj_py_obj(ffpython));
     
+#ifdef _WIN32
 	system("pause");
+#endif
 	Py_Finalize();
     
     return 0;
 }
-
-template <typename T>
-struct obj_guard_t
-{
-    obj_guard_t()
-    {
-        //inc(_FUNCTIOM)
-    }
-    ~obj_guard_t()
-    {
-        //Dec
-    }
-};

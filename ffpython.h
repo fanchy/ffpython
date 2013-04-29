@@ -10,6 +10,7 @@
 #include <list>
 #include <set>
 #include <map>
+#include <stdexcept>
 using namespace std;
 
 #ifdef _WIN32
@@ -110,7 +111,13 @@ public:
 template<typename T>
 class pytype_tool_impl_t;
 //! 封装调用python函数的C API
-struct pycall_t;
+struct pycall_t
+{
+	static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_,
+							pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_);
+    template<typename T>
+    static const T& call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret);
+};
 //! 用于扩展python的工具类，用来解析参数
 struct pyext_tool_t;
 
@@ -386,7 +393,9 @@ class ffpython_t
 public:
     static int init_py();
     static int final_py();
-
+	static int add_path(const string& path_);
+	static int run_string(const string& py_);
+	
     //! 注册static function，
     template<typename T>
     ffpython_t& reg(T func_, const string& func_name_, string doc_ = "")
@@ -425,7 +434,7 @@ public:
 		tmp.dector			= (destructor)pyclass_base_info_t<T>::free_obj;
 		tmp.init			= (initproc)pyclass_ctor_tool_t<T, CTOR>::init_obj;
 		tmp.ctor			= pyclass_base_info_t<T>::alloc_obj;
-		tmp.type_size		= sizeof(pyclass_base_info_t<T>::obj_data_t);
+		tmp.type_size		= sizeof(typename pyclass_base_info_t<T>::obj_data_t);
         tmp.args_num        = pyext_func_traits_t<CTOR>::args_num();
         tmp.option_args_num = pyext_func_traits_t<CTOR>::option_args_num();
         tmp.static_pytype_info = &(pyclass_base_info_t<T>::pytype_info);
@@ -526,6 +535,7 @@ public:
         pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
+
     //! 获取模块中变量的值
     template<typename RET>
     RET_V get_global_var(const string& mod_name_, const string& var_name_)
@@ -601,6 +611,19 @@ private:
 	
 };
 
+int ffpython_t::add_path(const string& path_)
+{
+	char buff[1024];
+    SAFE_SPRINTF(buff, sizeof(buff), "import sys\nif '%s' not in sys.path:\n\tsys.path.append('%s')\n", path_.c_str(), path_.c_str());
+	PyRun_SimpleString(buff);
+	return 0;
+}
+
+int ffpython_t::run_string(const string& py_)
+{
+	PyRun_SimpleString(py_.c_str());
+	return 0;
+}
 int ffpython_t::init(const string& mod_name_, string doc_)
 {
     m_mod_name = mod_name_;
@@ -673,18 +696,22 @@ PyObject* ffpython_t::init_method()
 
         char buff[1024];
         SAFE_SPRINTF(buff, sizeof(buff), 
-            "def %s_%s(%s):\n"
+			"_tmp_ff_ = None\nif '%s' in globals():\n\t_tmp_ff_ = globals()['%s']\n"
+            "def %s(%s):\n"
             "\t'''%s'''\n"
             "\treturn %s.%s(%ld,(%s))\n"
             "import %s\n"
-            "%s.%s = %s_%s\n"
-            "%s_%s = None\n",
-            m_mod_name.c_str(), m_func_info[i].func_name.c_str(), pystr_args.c_str(),
+            "%s.%s = %s\n"
+            "%s = None\n"
+			"if _tmp_ff_:\n\tglobals()['%s'] = _tmp_ff_\n_tmp_ff_ = None\n",
+			m_func_info[i].func_name.c_str(), m_func_info[i].func_name.c_str(), 
+            m_func_info[i].func_name.c_str(), pystr_args.c_str(),
             m_func_info[i].doc.c_str(), 
             m_mod_name.c_str(), m_func_info[i].func_impl_name.c_str(), m_func_info[i].func_addr, pystr_args_only_name.c_str(),
             m_mod_name.c_str(),
-            m_mod_name.c_str(), m_func_info[i].func_name.c_str(), m_mod_name.c_str(), m_func_info[i].func_name.c_str(),
-            m_mod_name.c_str(), m_func_info[i].func_name.c_str()
+            m_mod_name.c_str(), m_func_info[i].func_name.c_str(), m_func_info[i].func_name.c_str(),
+            m_func_info[i].func_name.c_str(),
+			m_func_info[i].func_name.c_str()
             );
 
         //printf(buff);
@@ -821,21 +848,23 @@ int ffpython_t::init_pyclass(PyObject* m)
         }
 
         char buff[1024];
-        SAFE_SPRINTF(buff, sizeof(buff), 
+        SAFE_SPRINTF(buff, sizeof(buff),
+			"_tmp_ff_ = None\nif '%s' in globals():\n\t_tmp_ff_ = globals()['%s']\n"
             "import %s\n"
-            "class %s_:\n"
+            "class %s:\n"
             "\t'''%s'''\n"
             "\tdef __init__(self, %s assign_obj_ = 0):\n"//! 定义init函数
             "\t\t'''%s'''\n"
             "\t\tif True == isinstance(assign_obj_, %s):\n"
             "\t\t\tself.obj = assign_obj_\n"
             "\t\t\treturn\n"
-            "\t\tself.obj = %s(0,(%s))\n"
-            ,m_mod_name.c_str(),
+            "\t\tself.obj = %s(0,(%s))\n",
+			m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
+            m_mod_name.c_str(),
             m_all_pyclass[i].class_name.c_str(),
-            "",//! TODO
+            m_all_pyclass[i].doc.c_str(),
             str_def_args.str().c_str(),
-            "",//! TODO
+            "init class",
             m_all_pyclass[i].class_reel_name_with_mod.c_str(),
             m_all_pyclass[i].class_reel_name_with_mod.c_str(), str_init_args.str().c_str()
             );
@@ -925,10 +954,12 @@ int ffpython_t::init_pyclass(PyObject* m)
             gen_class_str += buff;
         }
         SAFE_SPRINTF(buff, sizeof(buff), 
-            "%s.%s = %s_\n"
-            "%s_ = None\n",
+            "%s.%s = %s\n"
+            "%s = None\n"
+			"if _tmp_ff_:\n\tglobals()['%s'] = _tmp_ff_\n_tmp_ff_ = None\n",
             m_mod_name.c_str(), m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
-            m_all_pyclass[i].class_name.c_str()
+            m_all_pyclass[i].class_name.c_str(),
+			m_all_pyclass[i].class_name.c_str()
             );
         gen_class_str += buff;
         //printf(gen_class_str.c_str());
@@ -1031,6 +1062,38 @@ struct pytype_traits_t<long>
     static const char* get_typename() { return "long";}
 };
 
+#define  IMPL_INT_CODE(X) \
+template<> \
+struct pytype_traits_t<X> \
+{ \
+    static PyObject* pyobj_from_cppobj(const X& val_) \
+    { \
+        return PyInt_FromLong(long(val_)); \
+    } \
+    static int pyobj_to_cppobj(PyObject *pvalue_, X& m_ret) \
+    { \
+        if (true == PyLong_Check(pvalue_)) \
+        { \
+            m_ret = (X)PyLong_AsLong(pvalue_); \
+            return 0; \
+        } \
+        else if (true == PyInt_Check(pvalue_)) \
+        { \
+            m_ret = (X)PyInt_AsLong(pvalue_); \
+            return 0; \
+        } \
+        return -1; \
+    } \
+    static const char* get_typename() { return #X;} \
+};
+
+IMPL_INT_CODE(int)
+IMPL_INT_CODE(unsigned int)
+IMPL_INT_CODE(short)
+IMPL_INT_CODE(unsigned short)
+IMPL_INT_CODE(char)
+IMPL_INT_CODE(unsigned char)
+
 
 template<typename T>
 struct pytype_traits_t<const T*>
@@ -1064,7 +1127,7 @@ struct pytype_traits_t<const T*>
             }
 
             PyObject *palloc = pyclass_base_info_t<T>::alloc_obj(pyclass_base_info_t<T>::pytype_info.pytype_def, NULL, NULL);
-            pyclass_base_info_t<T>::obj_data_t* pdest_obj = (pyclass_base_info_t<T>::obj_data_t*)palloc;
+            typename pyclass_base_info_t<T>::obj_data_t* pdest_obj = (typename pyclass_base_info_t<T>::obj_data_t*)palloc;
             //pdest_obj->obj = val_;
             ::memcpy(&pdest_obj->obj, &val_, sizeof(pdest_obj->obj));
             pdest_obj->disable_auto_release();
@@ -1086,7 +1149,7 @@ struct pytype_traits_t<const T*>
             Py_XDECREF(pysrc);
             return -1;
         }
-        pyclass_base_info_t<T>::obj_data_t* pdest_obj = (pyclass_base_info_t<T>::obj_data_t*)pysrc;
+        typename pyclass_base_info_t<T>::obj_data_t* pdest_obj = (typename pyclass_base_info_t<T>::obj_data_t*)pysrc;
 
         m_ret = pdest_obj->obj;
         Py_XDECREF(pysrc);
@@ -1151,38 +1214,6 @@ struct pytype_traits_t<char*>
     */
     static const char* get_typename() { return "string";}
 };
-
-#define  IMPL_INT_CODE(X) \
-template<> \
-struct pytype_traits_t<X> \
-{ \
-    static PyObject* pyobj_from_cppobj(const X& val_) \
-    { \
-        return PyInt_FromLong(long(val_)); \
-    } \
-    static int pyobj_to_cppobj(PyObject *pvalue_, X& m_ret) \
-    { \
-        if (true == PyLong_Check(pvalue_)) \
-        { \
-            m_ret = (X)PyLong_AsLong(pvalue_); \
-            return 0; \
-        } \
-        else if (true == PyInt_Check(pvalue_)) \
-        { \
-            m_ret = (X)PyInt_AsLong(pvalue_); \
-            return 0; \
-        } \
-        return -1; \
-    } \
-    static const char* get_typename() { return #X;} \
-};
-
-IMPL_INT_CODE(int)
-IMPL_INT_CODE(unsigned int)
-IMPL_INT_CODE(short)
-IMPL_INT_CODE(unsigned short)
-IMPL_INT_CODE(char)
-IMPL_INT_CODE(unsigned char)
 
 template<>
 struct pytype_traits_t<bool>
@@ -1341,7 +1372,7 @@ struct pytype_traits_t<list<T> >
         size_t n = val_.size();
         PyObject* ret = PyList_New(n);
         int i = 0;
-        for (list<T>::const_iterator it = val_.begin(); it != val_.end(); ++it)
+        for (typename list<T>::const_iterator it = val_.begin(); it != val_.end(); ++it)
         {
             PyList_SetItem(ret, i++, pytype_traits_t<T>::pyobj_from_cppobj(*it));
         }
@@ -1388,7 +1419,7 @@ struct pytype_traits_t<set<T> >
     static PyObject* pyobj_from_cppobj(const set<T>& val_)
     {
         PyObject* ret = PySet_New(NULL);
-        for (set<T>::const_iterator it = val_.begin(); it != val_.end(); ++it)
+        for (typename set<T>::const_iterator it = val_.begin(); it != val_.end(); ++it)
         {
             PyObject *v = pytype_traits_t<T>::pyobj_from_cppobj(*it);
             PySet_Add(ret, v);
@@ -1396,7 +1427,7 @@ struct pytype_traits_t<set<T> >
         }
         return ret;
     }
-    static int pyobj_to_cppobj(PyObject *pvalue_)
+    static int pyobj_to_cppobj(PyObject *pvalue_, set<T>& m_ret)
     {
         m_ret.clear();
         pytype_tool_impl_t<T> ret_tool;
@@ -1526,66 +1557,64 @@ private:
 };
 
 //! 封装调用python函数
-struct pycall_t
+int pycall_t::call_func(PyObject *pModule, const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
 {
-    static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
-    {
-        PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
-        if (pFunc && PyCallable_Check(pFunc)) {
-            PyObject *pArgs = pyarg_.get_args();
-            PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
-            pyarg_.release();//! 等价于Py_DECREF(pArgs);
+	PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
+	if (pFunc && PyCallable_Check(pFunc)) {
+		PyObject *pArgs = pyarg_.get_args();
+		PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
+		pyarg_.release();//! 等价于Py_DECREF(pArgs);
 
-            if (pValue != NULL) {
-                if (pyret_.parse_value(pValue))
-                {
-                    err_ += "value returned is not ";
-                    err_ += pyret_.return_type();
-                    err_ += string(" ") + func_name_  + " in " + mod_name_;
-                }
-                Py_DECREF(pValue);
-            }
-        }
-        else
-        {
-            err_ += "Cannot find function ";
-            err_ += func_name_ + " in " + mod_name_ + ",";
-        }
+		if (pValue != NULL) {
+			if (pyret_.parse_value(pValue))
+			{
+				err_ += "value returned is not ";
+				err_ += pyret_.return_type();
+				err_ += string(" ") + func_name_  + " in " + mod_name_;
+			}
+			Py_DECREF(pValue);
+		}
+	}
+	else
+	{
+		err_ += "Cannot find function ";
+		err_ += func_name_ + " in " + mod_name_ + ",";
+	}
 
-        Py_XDECREF(pFunc);
-        if (PyErr_Occurred())
-        {
-            pyops_t::traceback(err_);
-            return 0;
-        }
-        return 0;
-    }
-    template<typename T>
-    static const T& call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
-    {
-        PyObject *pName = NULL, *pModule = NULL;
-        string err_msg;
+	Py_XDECREF(pFunc);
+	if (PyErr_Occurred())
+	{
+		pyops_t::traceback(err_);
+		return 0;
+	}
+	return 0;
+}
+template<typename T>
+const T& pycall_t::call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
+{
+	PyObject *pName = NULL, *pModule = NULL;
+	string err_msg;
 
-        pName   = PyString_FromString(mod_name_.c_str());
-        pModule = PyImport_Import(pName);
-        Py_DECREF(pName);
-        if (NULL == pModule)
-        {
-            pyops_t::traceback(err_msg);
-            throw runtime_error(err_msg.c_str());
-            return pyret.get_value();
-        }
+	pName   = PyString_FromString(mod_name_.c_str());
+	pModule = PyImport_Import(pName);
+	Py_DECREF(pName);
+	if (NULL == pModule)
+	{
+		pyops_t::traceback(err_msg);
+		throw runtime_error(err_msg.c_str());
+		return pyret.get_value();
+	}
 
-        call_func(pModule, mod_name_, func_name_, pyarg_, pyret, err_msg);
-        Py_DECREF(pModule);
+	call_func(pModule, mod_name_, func_name_, pyarg_, pyret, err_msg);
+	Py_DECREF(pModule);
 
-        if (!err_msg.empty())
-        {
-            throw runtime_error(err_msg.c_str());
-        }
-        return pyret.get_value();
-    }
-};
+	if (!err_msg.empty())
+	{
+		throw runtime_error(err_msg.c_str());
+	}
+	return pyret.get_value();
+}
+
 
 //! 用于扩展python的工具类，用来解析参数
 struct pyext_tool_t
@@ -1951,7 +1980,7 @@ struct pyext_func_traits_t<RET (*)(ARG1)>
     static int args_num(){ return 1-option_args_num();}
     static int option_args_num()
     {
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -1982,8 +2011,8 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2)>
     static int args_num() { return 2 - option_args_num();}
     static int option_args_num()
     {
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2015,9 +2044,9 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3)>
     static int args_num() { return 3-option_args_num();}
     static int option_args_num() 
     { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2048,10 +2077,10 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4)>
     typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4);
     static int args_num() { return 4-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2084,11 +2113,11 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5)>
     typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5);
     static int args_num() { return 5-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2123,12 +2152,12 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)>
     typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
     static int args_num() { return 6-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2165,13 +2194,13 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)>
     typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
     static int args_num() { return 7-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2209,14 +2238,14 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG
     typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8);
     static int args_num() { return 8-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG8>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2255,15 +2284,15 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG
     typedef RET (*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
     static int args_num() { return 9-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is() +
-            pyoption_traits_t<type_ref_traits_t<ARG9>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG8>::value_t>::is() +
+            pyoption_traits_t<typename type_ref_traits_t<ARG9>::value_t>::is();
     }
     static PyObject* pyfunc(PyObject* self, PyObject* args)
     {
@@ -2580,7 +2609,7 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1)>
 {
     typedef RET (CLASS_TYPE::*func_t)(ARG1);
     static int args_num() { return 1-option_args_num();}
-    static int option_args_num() { return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is();}
+    static int option_args_num() { return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is();}
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
     {
@@ -2610,8 +2639,8 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2)>
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2);
     static int args_num() { return 2-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2644,9 +2673,9 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3)>
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3);
     static int args_num() { return 3-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2679,10 +2708,10 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4)>
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4);
     static int args_num() { return 4-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2716,11 +2745,11 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5)>
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5);
     static int args_num() { return 5-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2757,12 +2786,12 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
     static int args_num() { return 6-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2800,13 +2829,13 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
     static int args_num() { return 7-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2845,14 +2874,14 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8);
     static int args_num() { return 8-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG8>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2893,15 +2922,15 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
     static int args_num() { return 9-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG9>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG8>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG9>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -2965,7 +2994,7 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1) const>
 {
     typedef RET (CLASS_TYPE::*func_t)(ARG1) const;
     static int args_num() { return 1-option_args_num();}
-    static int option_args_num() { return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is();}
+    static int option_args_num() { return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is();}
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
     {
@@ -2995,8 +3024,8 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2) const>
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2) const;
     static int args_num() { return 2-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -3029,9 +3058,9 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3) const>
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3) const;
     static int args_num() { return 3-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -3064,10 +3093,10 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4) const>
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4) const;
     static int args_num() { return 4-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -3101,11 +3130,11 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5) co
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5) const;
     static int args_num() { return 5-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -3142,12 +3171,12 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const;
     static int args_num() { return 6-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -3185,13 +3214,13 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const;
     static int args_num() { return 7-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -3230,14 +3259,14 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const;
     static int args_num() { return 8-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG8>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
@@ -3278,15 +3307,15 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     typedef RET (CLASS_TYPE::*func_t)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9) const;
     static int args_num() { return 9-option_args_num();}
     static int option_args_num() { 
-        return pyoption_traits_t<type_ref_traits_t<ARG1>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG2>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG3>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG4>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG5>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG6>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG7>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG8>::value_t>::is()+
-            pyoption_traits_t<type_ref_traits_t<ARG9>::value_t>::is();
+        return pyoption_traits_t<typename type_ref_traits_t<ARG1>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG2>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG3>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG4>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG5>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG6>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG7>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG8>::value_t>::is()+
+            pyoption_traits_t<typename type_ref_traits_t<ARG9>::value_t>::is();
     }
 
     static PyObject *pymethod(typename pyclass_base_info_t<CLASS_TYPE>::obj_data_t* self, PyObject* args)
