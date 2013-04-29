@@ -29,8 +29,7 @@ Only one implement c++ header file.
 	int a1 = 100; float a2 = 3.14f; string a3 = "OhWell";
     ffpython.call<void>("fftest", "test_base", a1, a2, a3);
 ```
-### call python function, Support all STL type as arg or return value. Nine args can be supported. Vector and List for tuple and list in python,
-	map for dict in python.
+### call python function, Support all STL type as arg or return value. Nine args can be supported. Vector and List for tuple and list in python,map for dict in python.
 ``` c++
 	vector<int> a1;a1.push_back(100);a1.push_back(200);
     list<string> a2; a2.push_back("Oh");a2.push_back("Nice");
@@ -150,7 +149,7 @@ void test_cpp_obj_py_obj(ffpython_t& ffpython)
 }
 ```
 ## Python test script
-``` pythhon
+``` python
 def test_base(a1, a2, a3):
 	print('test_base', a1, a2, a3)
 	return 0
