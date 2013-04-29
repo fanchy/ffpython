@@ -12,4 +12,17 @@ Only one implement c++ header file.
  * easier to extend python with c++ class. C++ class Once registed, python can use it like builtin type.
  * when python exception throw, ffpython will wrap it as a std exception which includes python traceback info.
 
+## Supported Clojure versions
+ * python2.5 python2.6 python2.7, win / linux
+ * python3.x is being developed, but unfortunately， python3.x api is so different to python2.x, even diffent between python3.2
+	and python3.3, Headache!!
+
+## Embed Python script in C++
+### Get / Set varialbe in  python script/module
+``` c++
+	printf("sys.version=%s\n", ffpython.get_global_var<string>("sys", "version").c_str());
+    ffpython.set_global_var("fftest", "global_var", "OhNice");
+    printf("fftest.global_var=%s\n", ffpython.get_global_var<string>("fftest", "global_var").c_str());
+```
+
  
