@@ -18,7 +18,7 @@ Only one implement c++ header file.
 	and python3.3, Headache!!
 
 ## Embed Python script in C++
-### Get / Set varialbe in  python script/module
+* ### Get / Set varialbe in  python script/module
 ``` c++
 	printf("sys.version=%s\n", ffpython.get_global_var<string>("sys", "version").c_str());
     ffpython.set_global_var("fftest", "global_var", "OhNice");
