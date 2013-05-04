@@ -12,7 +12,7 @@ Only one implement c++ header file.
  * easier to extend python with c++ class. C++ class Once registed, python can use it like builtin type.
  * when python exception throw, ffpython will wrap it as a std exception which includes python traceback info.
 
-## Supported Clojure versions
+## Supported Python versions
  * python2.5 python2.6 python2.7, win / linux
  * python3.x is being developed, but unfortunately， python3.x api is so different to python2.x, even diffent between python3.2
 	and python3.3, Headache!!
