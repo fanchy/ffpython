@@ -1174,6 +1174,21 @@ struct pytype_traits_t<T*>
 };
 
 template<>
+struct pytype_traits_t<PyObject*>
+{
+    static PyObject* pyobj_from_cppobj(PyObject* val_)
+    {
+        return val_;
+    }
+    static int pyobj_to_cppobj(PyObject *pvalue_, PyObject*& m_ret)
+    {
+        m_ret = pvalue_;
+        return 0;
+    }
+    static const char* get_typename() { return "PyObject";}
+};
+
+template<>
 struct pytype_traits_t<const char*>
 {
     static PyObject* pyobj_from_cppobj(const char*& val_)
