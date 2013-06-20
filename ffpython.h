@@ -391,6 +391,12 @@ class ffpython_t
 	};
 
 public:
+    ffpython_t()
+    {
+        if (!Py_IsInitialized())
+            Py_Initialize();
+    }
+
     static int init_py();
     static int final_py();
 	static int add_path(const string& path_);
