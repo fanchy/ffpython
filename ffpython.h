@@ -402,6 +402,7 @@ public:
 	static int add_path(const string& path_);
 	static int run_string(const string& py_);
 	static int reload(const string& py_);
+    static int load(const string& py_);
     //! ×¢²ástatic function£¬
     template<typename T>
     ffpython_t& reg(T func_, const string& func_name_, string doc_ = "")
@@ -662,6 +663,25 @@ int ffpython_t::reload(const string& py_name_)
         return -1;
     }
     Py_DECREF(pNewMod);   
+    return 0;
+}
+
+int ffpython_t::load(const string& py_name_)
+{
+    PyObject *pName = NULL, *pModule = NULL;
+    string err_msg;
+
+    pName   = PyString_FromString(py_name_.c_str());
+    pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+    if (NULL == pModule)
+    {
+        pyops_t::traceback(err_msg);
+        throw runtime_error(err_msg.c_str());
+        return -1;
+    }
+
+    Py_DECREF(pModule);
     return 0;
 }
 PyObject* ffpython_t::init_method()
