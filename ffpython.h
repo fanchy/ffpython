@@ -20,18 +20,18 @@ using namespace std;
 #endif
 
 
-//! »ñÈ¡pythonÒì³£ĞÅÏ¢
+//! è·å–pythonå¼‚å¸¸ä¿¡æ¯
 struct pyops_t
 {
     static int traceback(string& ret_);
 };
 struct cpp_void_t{};
 
-//! ÓÃÓÚ³éÈ¡ÀàĞÍ¡¢ÀàĞÍ¶ÔÓ¦µÄÒıÓÃ
+//! ç”¨äºæŠ½å–ç±»å‹ã€ç±»å‹å¯¹åº”çš„å¼•ç”¨
 template<typename T>
 struct type_ref_traits_t;
 
-//! ÓÃÓÚpython ¿ÉÑ¡²ÎÊı
+//! ç”¨äºpython å¯é€‰å‚æ•°
 template<typename T>
 struct pyoption_t
 {
@@ -52,15 +52,15 @@ struct pyoption_t
 	bool	m_set_flag;
 	value_t m_value;
 };
-//! ÓÃÓÚÅĞ¶ÏÊÇ·ñÊÇ¿ÉÑ¡²ÎÊı
+//! ç”¨äºåˆ¤æ–­æ˜¯å¦æ˜¯å¯é€‰å‚æ•°
 template<typename T>
 struct pyoption_traits_t;
 
-//! pytype_traits_t ·â×° PyLong_FromLong Ïà¹ØµÄ²Ù×÷£¬ÓÃÓÚÎªµ÷ÓÃpythonÉú³É²ÎÊı
+//! pytype_traits_t å°è£… PyLong_FromLong ç›¸å…³çš„æ“ä½œï¼Œç”¨äºä¸ºè°ƒç”¨pythonç”Ÿæˆå‚æ•°
 template<typename T>
 struct pytype_traits_t;
 
-//! ÓÃÓÚµ÷ÓÃpythonº¯Êı£¬Éú³ÉtupleÀàĞÍµÄpythonº¯Êı²ÎÊıµÄ¹¤¾ßÀà
+//! ç”¨äºè°ƒç”¨pythonå‡½æ•°ï¼Œç”Ÿæˆtupleç±»å‹çš„pythonå‡½æ•°å‚æ•°çš„å·¥å…·ç±»
 struct pycall_arg_t
 {
     pycall_arg_t(int arg_num):
@@ -98,7 +98,7 @@ struct pycall_arg_t
     PyObject *  pargs_tuple;
 };
 
-//! ÓÃÓÚµ÷ÓÃpythonº¯Êı£¬»ñÈ¡·µ»ØÖµµÄ¹¤¾ßÀà
+//! ç”¨äºè°ƒç”¨pythonå‡½æ•°ï¼Œè·å–è¿”å›å€¼çš„å·¥å…·ç±»
 class pytype_tool_t
 {
 public:
@@ -107,10 +107,10 @@ public:
     virtual const char* return_type() {return "";}
 };
 
-//! ÓÃÓÚµ÷ÓÃpythonº¯Êı£¬»ñÈ¡·µ»ØÖµµÄ¹¤¾ß·ºĞÍÀà
+//! ç”¨äºè°ƒç”¨pythonå‡½æ•°ï¼Œè·å–è¿”å›å€¼çš„å·¥å…·æ³›å‹ç±»
 template<typename T>
 class pytype_tool_impl_t;
-//! ·â×°µ÷ÓÃpythonº¯ÊıµÄC API
+//! å°è£…è°ƒç”¨pythonå‡½æ•°çš„C API
 struct pycall_t
 {
 	static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_,
@@ -118,22 +118,22 @@ struct pycall_t
     template<typename T>
     static const T& call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret);
 };
-//! ÓÃÓÚÀ©Õ¹pythonµÄ¹¤¾ßÀà£¬ÓÃÀ´½âÎö²ÎÊı
+//! ç”¨äºæ‰©å±•pythonçš„å·¥å…·ç±»ï¼Œç”¨æ¥è§£æå‚æ•°
 struct pyext_tool_t;
 
-//! ÓÃÓÚÀ©Õ¹python£¬Éú³ÉpyobjectÀàĞÍµÄ·µ»ØÖµ¸øpython
+//! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¹pythonï¿½ï¿½ï¿½ï¿½ï¿½pyobjectï¿½ï¿½ï¿½ÍµÄ·ï¿½ï¿½ï¿½Öµï¿½ï¿½python
 template<typename T>
 struct pyext_return_tool_t;
 
-//! ÓÃÓÚÀ©Õ¹python£¬traits³ö×¢²á¸øpythonµÄº¯Êı½Ó¿Ú
+//! ç”¨äºæ‰©å±•pythonï¼Œç”Ÿæˆpyobjectç±»å‹çš„è¿”å›å€¼ç»™python
 template <typename T>
 struct pyext_func_traits_t;
 
-//! ÓÃÓÚ×¢²ác++ class¸øpython£¬·½±ãÉùÃ÷¹¹Ôìº¯Êı
+//! ç”¨äºæ‰©å±•pythonï¼Œtraitså‡ºæ³¨å†Œç»™pythonçš„å‡½æ•°æ¥å£
 #ifndef PYCTOR
 #define  PYCTOR int (*)
 #endif
-//! ±íÊ¾voidÀàĞÍ£¬ÓÉÓÚvoidÀàĞÍ²»ÄÜreturn£¬ÓÃvoid_ignore_tÊÊÅä
+//! è¡¨ç¤ºvoidç±»å‹ï¼Œç”±äºvoidç±»å‹ä¸èƒ½returnï¼Œç”¨void_ignore_té€‚é…
 template<typename T>
 struct void_ignore_t;
 
@@ -151,7 +151,7 @@ struct void_ignore_t<void>
 
 #define  RET_V typename void_ignore_t<RET>::value_t
 
-//! ¼ÇÂ¼¸÷¸ö»ùÀàºÍ×ÓÀàµÄÏà»¥¹ØÏµ
+//! è®°å½•å„ä¸ªåŸºç±»å’Œå­ç±»çš„ç›¸äº’å…³ç³»
 struct cpp_to_pyclass_reg_info_t
 {
     struct inherit_info_t
@@ -198,7 +198,7 @@ struct cpp_to_pyclass_reg_info_t
 };
 
 
-//! ¼ÇÂ¼C++ class ¶ÔÓ¦µ½pythonÖĞµÄÃû³Æ¡¢²ÎÊıĞÅÏ¢µÈ,È«¾Ö
+//! è®°å½•C++ class å¯¹åº”åˆ°pythonä¸­çš„åç§°ã€å‚æ•°ä¿¡æ¯ç­‰,å…¨å±€
 struct static_pytype_info_t
 {
     string class_name;
@@ -207,7 +207,7 @@ struct static_pytype_info_t
     PyTypeObject* pytype_def;
 };
 
-//! ¹¤¾ßÀà£¬ÓÃÓÚÉú³É·ÖÅäpython classµÄ½Ó¿Ú£¬°üÀ¨·ÖÅä¡¢ÊÍ·Å
+//! å·¥å…·ç±»ï¼Œç”¨äºç”Ÿæˆåˆ†é…python classçš„æ¥å£ï¼ŒåŒ…æ‹¬åˆ†é…ã€é‡Šæ”¾
 template<typename T>
 struct pyclass_base_info_t
 {
@@ -215,8 +215,8 @@ struct pyclass_base_info_t
     {
         obj_data_t():obj(NULL){}
 
-        PyObject_HEAD
-            T* obj;
+        PyObject_HEAD;
+        T* obj;
         bool forbid_release;
 		void disable_auto_release(){ forbid_release = true; }
 		void release()
@@ -254,7 +254,7 @@ struct pyclass_base_info_t
 template<typename T>
 static_pytype_info_t pyclass_base_info_t<T>::pytype_info;
 
-//! ·½±ãÉú³Épyclass ³õÊ¼»¯º¯Êı
+//! æ–¹ä¾¿ç”Ÿæˆpyclass åˆå§‹åŒ–å‡½æ•°
 template <typename CLASS_TYPE, typename CTOR>
 struct pyclass_ctor_tool_t;
 
@@ -262,10 +262,10 @@ struct pyclass_ctor_tool_t;
 template<typename T>
 struct pyclass_method_gen_t;
 
-//! ·ÀÖ¹³öÏÖÖ¸ÕëÎªNULLµ÷ÓÃ³ö´í
+//! é˜²æ­¢å‡ºç°æŒ‡é’ˆä¸ºNULLè°ƒç”¨å‡ºé”™
 #define  NULL_PTR_GUARD(X) if (NULL == X) {PyErr_SetString(PyExc_TypeError, "obj data ptr NULL");return NULL;}
 
-//! ÓÃÓÚÉú³Épython µÄgetterºÍsetter½Ó¿Ú£¬ÊÊÅäÓÚc++ classµÄ³ÉÔ±±äÁ¿
+//! ç”¨äºç”Ÿæˆpython çš„getterå’Œsetteræ¥å£ï¼Œé€‚é…äºc++ classçš„æˆå‘˜å˜é‡
 template <typename CLASS_TYPE, typename RET>
 struct pyclass_member_func_gen_t
 {
@@ -290,7 +290,7 @@ struct pyclass_member_func_gen_t
     }
 };
 
-//! ÓÃÓÚC++ ×¢²áclassµÄ¹¤¾ßÀà£¬»á¼ÇÂ¼class¶ÔÓ¦µÄÃû³Æ¡¢³ÉÔ±·½·¨¡¢³ÉÔ±±äÁ¿
+//! ç”¨äºC++ æ³¨å†Œclassçš„å·¥å…·ç±»ï¼Œä¼šè®°å½•classå¯¹åº”çš„åç§°ã€æˆå‘˜æ–¹æ³•ã€æˆå‘˜å˜é‡
 class pyclass_regigster_tool_t
 {
 public:
@@ -342,7 +342,7 @@ public:
     //! property
     vector<PyGetSetDef>     pyproperty_def;
 
-    //! ¾²Ì¬ÀàĞÍĞèÒªÈ«¾Ö¼ÇÂ¼¸ÃÀàĞÍ±»×¢²á³ÉÉñÂípython ÀàĞÍ
+    //! é™æ€ç±»å‹éœ€è¦å…¨å±€è®°å½•è¯¥ç±»å‹è¢«æ³¨å†Œæˆç¥é©¬python ç±»å‹
     static_pytype_info_t*   static_pytype_info;
 
     template<typename FUNC>
@@ -402,8 +402,8 @@ public:
 	static int add_path(const string& path_);
 	static int run_string(const string& py_);
 	static int reload(const string& py_);
-    static int load(const string& py_);
-    //! ×¢²ástatic function£¬
+	static int load(const string& py_);
+    //! æ³¨å†Œstatic functionï¼Œ
     template<typename T>
     ffpython_t& reg(T func_, const string& func_name_, string doc_ = "")
     {
@@ -421,7 +421,7 @@ public:
         return *this;
     }
 
-    //! ×¢²ác++ class
+    //! æ³¨å†Œc++ class
 	template<typename T, typename CTOR>
 	pyclass_regigster_tool_t& reg_class(const string& class_name_, string doc_ = "", string inherit_name_ = "")
 	{
@@ -445,17 +445,17 @@ public:
         tmp.args_num        = pyext_func_traits_t<CTOR>::args_num();
         tmp.option_args_num = pyext_func_traits_t<CTOR>::option_args_num();
         tmp.static_pytype_info = &(pyclass_base_info_t<T>::pytype_info);
-        //! ×¢²áÎö¹¹º¯Êı,pythonÈô²»µ÷ÓÃÎö¹¹º¯Êı,µ±¶ÔÏó±»gcÊ±×Ô¶¯µ÷ÓÃ
+        //! æ³¨å†Œææ„å‡½æ•°,pythonè‹¥ä¸è°ƒç”¨ææ„å‡½æ•°,å½“å¯¹è±¡è¢«gcæ—¶è‡ªåŠ¨è°ƒç”¨
         tmp.delete_func = (PyCFunction)pyclass_base_info_t<T>::release;
 		m_all_pyclass.push_back(tmp);
 
 		return m_all_pyclass.back();
 	}
 
-    //! ½«ĞèÒª×¢²áµÄº¯Êı¡¢ÀàĞÍ×¢²áµ½pythonĞéÄâ»ú
+    //! å°†éœ€è¦æ³¨å†Œçš„å‡½æ•°ã€ç±»å‹æ³¨å†Œåˆ°pythonè™šæ‹Ÿæœº
     int init(const string& mod_name_, string doc_ = "");
 
-    //! µ÷ÓÃpythonº¯Êı£¬×î¶àÖ§³Ö9¸ö²ÎÊı
+    //! è°ƒç”¨pythonå‡½æ•°ï¼Œæœ€å¤šæ”¯æŒ9ä¸ªå‚æ•°
     template<typename RET>
     RET_V call(const string& mod_name_, const string& func_)
     {
@@ -543,7 +543,7 @@ public:
         return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
 
-    //! »ñÈ¡Ä£¿éÖĞ±äÁ¿µÄÖµ
+    //! è·å–æ¨¡å—ä¸­å˜é‡çš„å€¼
     template<typename RET>
     RET_V get_global_var(const string& mod_name_, const string& var_name_)
     {
@@ -577,7 +577,7 @@ public:
         Py_XDECREF(pvalue);
         return pyret.get_value();
     }
-    //! ÉèÖÃÄ£¿éÖĞ±äÁ¿µÄÖµ
+    //! ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ï¿½Ğ±ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
     template<typename T>
     int set_global_var(const string& mod_name_, const string& var_name_, T val_)
     {
@@ -665,7 +665,6 @@ int ffpython_t::reload(const string& py_name_)
     Py_DECREF(pNewMod);   
     return 0;
 }
-
 int ffpython_t::load(const string& py_name_)
 {
     PyObject *pName = NULL, *pModule = NULL;
@@ -777,7 +776,7 @@ int ffpython_t::init_pyclass(PyObject* m)
     for (size_t i = 0; i < m_all_pyclass.size(); ++i)
     {
         m_all_pyclass[i].static_pytype_info->mod_name = m_mod_name;
-        if (false == m_all_pyclass[i].inherit_name.empty())//! ´æÔÚ»ùÀà
+        if (false == m_all_pyclass[i].inherit_name.empty())//! å­˜åœ¨åŸºç±»
         {
             pyclass_regigster_tool_t* inherit_class = get_pyclass_info_by_name(m_all_pyclass[i].inherit_name);
             assert(inherit_class && "base class must be registed");
@@ -904,7 +903,7 @@ int ffpython_t::init_pyclass(PyObject* m)
             "import %s\n"
             "class %s:\n"
             "\t'''%s'''\n"
-            "\tdef __init__(self, %s assign_obj_ = 0):\n"//! ¶¨Òåinitº¯Êı
+            "\tdef __init__(self, %s assign_obj_ = 0):\n"//! å®šä¹‰initå‡½æ•°
             "\t\t'''%s'''\n"
             "\t\tif True == isinstance(assign_obj_, %s):\n"
             "\t\t\tself.obj = assign_obj_\n"
@@ -922,12 +921,12 @@ int ffpython_t::init_pyclass(PyObject* m)
         
         string gen_class_str = buff;
 		SAFE_SPRINTF(buff, sizeof(buff),
-            "\tdef delete(self):\n"//! ¶¨Òåinitº¯Êı
+            "\tdef delete(self):\n"//! å®šä¹‰initå‡½æ•°
 				"\t\t'''delete obj'''\n"
 				"\t\tself.obj.delete()\n");
 		gen_class_str += buff;
-		//! Ôö¼ÓÎö¹¹º¯Êı
-        //! Ôö¼ÓÊôĞÔ
+		//! å¢åŠ ææ„å‡½æ•°
+        //! å¢åŠ å±æ€§
         for (size_t c = 0; c < m_all_pyclass[i].propertys_info.size(); ++c)
         {
             SAFE_SPRINTF(buff, sizeof(buff), 
@@ -1052,7 +1051,7 @@ pyclass_regigster_tool_t* ffpython_t::get_pyclass_info_by_name(const string& nam
     return NULL;
 }
 
-//! ÒıÓÃÀàĞÍİÍÈ¡
+//! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡
 template<typename T>
 struct type_ref_traits_t
 {
@@ -1074,7 +1073,7 @@ struct type_ref_traits_t<const T&>
     typedef T&	ref_t;
     value_t		value;
 };
-//! ÓÃÓÚÅĞ¶ÏÊÇ·ñÊÇ¿ÉÑ¡²ÎÊı
+//! ç”¨äºåˆ¤æ–­æ˜¯å¦æ˜¯å¯é€‰å‚æ•°
 template<typename T>
 struct pyoption_traits_t
 {
@@ -1087,7 +1086,7 @@ struct pyoption_traits_t<pyoption_t<T> >
 };
 
 
-//! pytype_traits_t ·â×° PyLong_FromLong Ïà¹ØµÄ²Ù×÷£¬ÓÃÓÚÎªµ÷ÓÃpythonÉú³É²ÎÊı
+//! pytype_traits_t å°è£… PyLong_FromLong ç›¸å…³çš„æ“ä½œï¼Œç”¨äºä¸ºè°ƒç”¨pythonç”Ÿæˆå‚æ•°
 
 template<>//typename T>
 struct pytype_traits_t<long>
@@ -1145,6 +1144,14 @@ IMPL_INT_CODE(unsigned short)
 IMPL_INT_CODE(char)
 IMPL_INT_CODE(unsigned char)
 
+#ifdef _WIN32
+IMPL_INT_CODE(unsigned long)
+#else
+#ifndef __x86_64__
+IMPL_INT_CODE(int64_t)
+#endif
+IMPL_INT_CODE(uint64_t)
+#endif
 
 template<typename T>
 struct pytype_traits_t<const T*>
@@ -1564,7 +1571,7 @@ struct pytype_traits_t<map<T, R> >
     static const char* get_typename() { return "map";}
 };
 
-//! »ñÈ¡pythonº¯ÊıµÄ·µ»ØÖµ,¹¤¾ßÀà
+//! è·å–pythonå‡½æ•°çš„è¿”å›å€¼,å·¥å…·ç±»
 template<typename T>
 class pytype_tool_impl_t: public pytype_tool_t
 {
@@ -1622,14 +1629,14 @@ private:
     T*    m_ret;
 };
 
-//! ·â×°µ÷ÓÃpythonº¯Êı
+//! å°è£…è°ƒç”¨pythonå‡½æ•°
 int pycall_t::call_func(PyObject *pModule, const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
 {
 	PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
 	if (pFunc && PyCallable_Check(pFunc)) {
 		PyObject *pArgs = pyarg_.get_args();
 		PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
-		pyarg_.release();//! µÈ¼ÛÓÚPy_DECREF(pArgs);
+		pyarg_.release();//! ç­‰ä»·äºPy_DECREF(pArgs);
 
 		if (pValue != NULL) {
 			if (pyret_.parse_value(pValue))
@@ -1682,7 +1689,7 @@ const T& pycall_t::call(const string& mod_name_, const string& func_name_, pycal
 }
 
 
-//! ÓÃÓÚÀ©Õ¹pythonµÄ¹¤¾ßÀà£¬ÓÃÀ´½âÎö²ÎÊı
+//! ç”¨äºæ‰©å±•pythonçš„å·¥å…·ç±»ï¼Œç”¨æ¥è§£æå‚æ•°
 struct pyext_tool_t
 {
     pyext_tool_t(PyObject* args_):
@@ -1749,16 +1756,16 @@ struct pyext_tool_t
     PyObject* m_arg_tuple;
     int       m_index;
     int       m_size;
-    bool      m_err;//! ÊÇ·ñÒì³£
+    bool      m_err;//! æ˜¯å¦å¼‚å¸¸
     long      m_func_addr;
 };
 
 
-//! ÓÃÓÚÀ©Õ¹python£¬Éú³ÉpyobjectÀàĞÍµÄ·µ»ØÖµ¸øpython
+//! ç”¨äºæ‰©å±•pythonï¼Œç”Ÿæˆpyobjectç±»å‹çš„è¿”å›å€¼ç»™python
 template<typename T>
 struct pyext_return_tool_t
 {
-    //! ÓÃÓÚ¾²Ì¬·½·¨
+   //! ç”¨äºé™æ€æ–¹æ³•
     template<typename F>
     static PyObject* route_call(F f)
     {
@@ -1815,7 +1822,7 @@ struct pyext_return_tool_t
         return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
             a7.value, a8.value, a9.value));
     }
-    //! ÓÃÓÚ³ÉÔ±·½·¨
+    //! ç”¨äºæˆå‘˜æ–¹æ³•
     template<typename O, typename F>
     static PyObject* route_method_call(O o, F f)
     {
@@ -2015,7 +2022,7 @@ struct pyext_return_tool_t<void>
 };
 
 
-//! ÓÃÓÚÀ©Õ¹python£¬traits³ö×¢²á¸øpythonµÄº¯Êı½Ó¿Ú
+//! ç”¨äºæ‰©å±•pythonï¼Œtraitså‡ºæ³¨å†Œç»™pythonçš„å‡½æ•°æ¥å£
 template <typename RET>
 struct pyext_func_traits_t<RET (*)()>
 {
@@ -2391,7 +2398,7 @@ struct pyext_func_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG
     }
 };
 
-//! ·½±ãÉú³Épyclass ³õÊ¼»¯º¯Êı
+//! æ–¹ä¾¿ç”Ÿæˆpyclass åˆå§‹åŒ–å‡½æ•°
 template <typename CLASS_TYPE>
 struct pyclass_ctor_tool_t<CLASS_TYPE, int(*)()>
 {
@@ -3030,7 +3037,7 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     }
 };
 
-//! constÀàĞÍ³ÉÔ±º¯Êı---------------------------------------------------------------------------------------------
+//! constç±»å‹æˆå‘˜å‡½æ•°---------------------------------------------------------------------------------------------
 
 template<typename RET, typename CLASS_TYPE>
 struct pyclass_method_gen_t<RET (CLASS_TYPE::*)() const>
@@ -3415,7 +3422,7 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     }
 };
 
-//! »ñÈ¡pythonÒì³£ĞÅÏ¢
+//! è·å–pythonå¼‚å¸¸ä¿¡æ¯
 int pyops_t::traceback(string& ret_)
 {
     PyObject* err = PyErr_Occurred();
