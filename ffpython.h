@@ -1352,7 +1352,7 @@ struct pytype_traits_t<string>
 #ifdef _WIN32
             PyObject* retStr = PyUnicode_AsEncodedString(pvalue_, "gbk", "");
 #else
-            PyObject* retStr = PyUnicode_EncodeUTF8(pvalue_);
+            PyObject* retStr = PyUnicode_AsUTF8String(pvalue_);
 #endif
             if (retStr)
             {
