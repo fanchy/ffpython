@@ -1347,6 +1347,20 @@ struct pytype_traits_t<string>
             m_ret = PyString_AsString(pvalue_);
             return 0;
         }
+        else if (true == PyUnicode_Check(pvalue_))
+        {
+#ifdef _WIN32
+            PyObject* retStr = PyUnicode_AsEncodedString(pvalue_, "gbk", "");
+#else
+            PyObject* retStr = PyUnicode_EncodeUTF8(pvalue_);
+#endif
+            if (retStr)
+            {
+                m_ret = PyString_AsString(retStr);
+                Py_XDECREF(retStr);
+                return 0;
+            }
+        }
         return -1;
     }
     static const char* get_typename() { return "string";}
