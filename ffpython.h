@@ -35,22 +35,22 @@ struct type_ref_traits_t;
 template<typename T>
 struct pyoption_t
 {
-	typedef typename type_ref_traits_t<T>::value_t value_t;
-	pyoption_t():m_set_flag(false){}
-	bool is_set() const { return m_set_flag;}
-	void set()			{ m_set_flag = true;}
-	value_t&       value()    { return m_value;}
-	const value_t& value() const{ return m_value;}
-	
-	const value_t& value(const value_t& default_)
-	{
-		if (is_set())
-			return m_value;
-		else
-			return default_;
-	}
-	bool	m_set_flag;
-	value_t m_value;
+        typedef typename type_ref_traits_t<T>::value_t value_t;
+        pyoption_t():m_set_flag(false){}
+        bool is_set() const { return m_set_flag;}
+        void set()                        { m_set_flag = true;}
+        value_t&       value()    { return m_value;}
+        const value_t& value() const{ return m_value;}
+        
+        const value_t& value(const value_t& default_)
+        {
+                if (is_set())
+                        return m_value;
+                else
+                        return default_;
+        }
+        bool        m_set_flag;
+        value_t m_value;
 };
 //! 用于判断是否是可选参数
 template<typename T>
@@ -69,7 +69,7 @@ struct pycall_arg_t
     {}
     ~pycall_arg_t()
     {
-		release();
+                release();
     }
     PyObject * get_args() const
     {
@@ -86,14 +86,14 @@ struct pycall_arg_t
         }
         return *this;
     }
-	void release()
-	{
-		if (pargs_tuple)
-		{
-			Py_DECREF(pargs_tuple);
-			pargs_tuple = NULL;
-		}
-	}
+        void release()
+        {
+                if (pargs_tuple)
+                {
+                        Py_DECREF(pargs_tuple);
+                        pargs_tuple = NULL;
+                }
+        }
     int         arg_index;
     PyObject *  pargs_tuple;
 };
@@ -113,8 +113,8 @@ class pytype_tool_impl_t;
 //! 封装调用python函数的C API
 struct pycall_t
 {
-	static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_,
-							pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_);
+        static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_,
+                                                        pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_);
     template<typename T>
     static const T& call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret);
 };
@@ -218,15 +218,15 @@ struct pyclass_base_info_t
         PyObject_HEAD;
         T* obj;
         bool forbid_release;
-		void disable_auto_release(){ forbid_release = true; }
-		void release()
-		{
-			if (obj)
-			{
-				delete obj;
-				obj = NULL;
-			}
-		}
+                void disable_auto_release(){ forbid_release = true; }
+                void release()
+                {
+                        if (obj)
+                        {
+                                delete obj;
+                                obj = NULL;
+                        }
+                }
     };
 
     static void free_obj(obj_data_t* self)
@@ -243,11 +243,11 @@ struct pyclass_base_info_t
         obj_data_t *self = (obj_data_t *)type->tp_alloc(type, 0);
         return (PyObject *)self;
     }
-	static PyObject *release(PyTypeObject *type, PyObject *args)
+        static PyObject *release(PyTypeObject *type, PyObject *args)
     {
         obj_data_t *self = (obj_data_t *)type;
-		self->release();
-		Py_RETURN_TRUE;
+                self->release();
+                Py_RETURN_TRUE;
     }
     static static_pytype_info_t pytype_info;
 };
@@ -317,11 +317,11 @@ public:
 
     typedef PyObject *(*pyobj_alloc_t)(PyTypeObject*, PyObject*, PyObject*);
 
-    string		class_name;
-    string		class_real_name;
-    string		class_name_with_mod;
-    string		class_reel_name_with_mod;
-    string		inherit_name;
+    string                class_name;
+    string                class_real_name;
+    string                class_name_with_mod;
+    string                class_reel_name_with_mod;
+    string                inherit_name;
     int         type_size;
     string      doc;
     int         args_num;
@@ -331,14 +331,14 @@ public:
     pyobj_alloc_t ctor;
 
     //!  member functions
-	PyCFunction      		delete_func;
-    vector<method_info_t>	methods_info;
+        PyCFunction                      delete_func;
+    vector<method_info_t>        methods_info;
     //! property 
-    vector<property_info_t>	propertys_info;
+    vector<property_info_t>        propertys_info;
     //! for init module
-    PyTypeObject			pytype_def;
+    PyTypeObject                        pytype_def;
     //! method
-    vector<PyMethodDef>		pymethod_def;
+    vector<PyMethodDef>                pymethod_def;
     //! property
     vector<PyGetSetDef>     pyproperty_def;
 
@@ -377,18 +377,18 @@ public:
 
 class ffpython_t
 {
-	struct reg_info_t
-	{
-		reg_info_t():args_num(0),option_args_num(0),func_addr(0){}
-		int  args_num;
-		int  option_args_num;
-		long func_addr;
-		PyCFunction func;
-		string func_name;
-		string func_impl_name;
-		string doc;
-		string doc_impl;
-	};
+        struct reg_info_t
+        {
+                reg_info_t():args_num(0),option_args_num(0),func_addr(0){}
+                int  args_num;
+                int  option_args_num;
+                long func_addr;
+                PyCFunction func;
+                string func_name;
+                string func_impl_name;
+                string doc;
+                string doc_impl;
+        };
 
 public:
     ffpython_t()
@@ -399,32 +399,32 @@ public:
 
     static int init_py();
     static int final_py();
-	static int add_path(const string& path_);
-	static int run_string(const string& py_);
-	static int reload(const string& py_);
-	static int load(const string& py_);
+        static int add_path(const string& path_);
+        static int run_string(const string& py_);
+        static int reload(const string& py_);
+        static int load(const string& py_);
     //! 注册static function，
     template<typename T>
     ffpython_t& reg(T func_, const string& func_name_, string doc_ = "")
     {
-		reg_info_t tmp;
-		tmp.args_num = pyext_func_traits_t<T>::args_num();
-		tmp.option_args_num = pyext_func_traits_t<T>::option_args_num();
-		tmp.func     = (PyCFunction)pyext_func_traits_t<T>::pyfunc;
-		tmp.func_name= func_name_;
-		tmp.func_impl_name = func_name_ + "_internal_";
-		tmp.doc      = doc_;
-		tmp.doc_impl = string("internal use, please call ") + func_name_;
-		tmp.func_addr= (long)func_;
-		
-		m_func_info.push_back(tmp);
+                reg_info_t tmp;
+                tmp.args_num = pyext_func_traits_t<T>::args_num();
+                tmp.option_args_num = pyext_func_traits_t<T>::option_args_num();
+                tmp.func     = (PyCFunction)pyext_func_traits_t<T>::pyfunc;
+                tmp.func_name= func_name_;
+                tmp.func_impl_name = func_name_ + "_internal_";
+                tmp.doc      = doc_;
+                tmp.doc_impl = string("internal use, please call ") + func_name_;
+                tmp.func_addr= (long)func_;
+                
+                m_func_info.push_back(tmp);
         return *this;
     }
 
     //! 注册c++ class
-	template<typename T, typename CTOR>
-	pyclass_regigster_tool_t& reg_class(const string& class_name_, string doc_ = "", string inherit_name_ = "")
-	{
+        template<typename T, typename CTOR>
+        pyclass_regigster_tool_t& reg_class(const string& class_name_, string doc_ = "", string inherit_name_ = "")
+        {
         if (pyclass_base_info_t<T>::pytype_info.class_name.empty() == false)
             throw runtime_error("this type has been registed");
 
@@ -433,24 +433,24 @@ public:
         pyclass_base_info_t<T>::pytype_info.total_args_num = pyext_func_traits_t<CTOR>::args_num() + 
                                                                      pyext_func_traits_t<CTOR>::option_args_num();
 
-		pyclass_regigster_tool_t tmp;
-		tmp.class_name		= class_name_;
-		tmp.class_real_name	= class_name_ + "_internal_";
-		tmp.inherit_name	= inherit_name_;
-		tmp.doc             = doc_;
-		tmp.dector			= (destructor)pyclass_base_info_t<T>::free_obj;
-		tmp.init			= (initproc)pyclass_ctor_tool_t<T, CTOR>::init_obj;
-		tmp.ctor			= pyclass_base_info_t<T>::alloc_obj;
-		tmp.type_size		= sizeof(typename pyclass_base_info_t<T>::obj_data_t);
+                pyclass_regigster_tool_t tmp;
+                tmp.class_name                = class_name_;
+                tmp.class_real_name        = class_name_ + "_internal_";
+                tmp.inherit_name        = inherit_name_;
+                tmp.doc             = doc_;
+                tmp.dector                        = (destructor)pyclass_base_info_t<T>::free_obj;
+                tmp.init                        = (initproc)pyclass_ctor_tool_t<T, CTOR>::init_obj;
+                tmp.ctor                        = pyclass_base_info_t<T>::alloc_obj;
+                tmp.type_size                = sizeof(typename pyclass_base_info_t<T>::obj_data_t);
         tmp.args_num        = pyext_func_traits_t<CTOR>::args_num();
         tmp.option_args_num = pyext_func_traits_t<CTOR>::option_args_num();
         tmp.static_pytype_info = &(pyclass_base_info_t<T>::pytype_info);
         //! 注册析构函数,python若不调用析构函数,当对象被gc时自动调用
         tmp.delete_func = (PyCFunction)pyclass_base_info_t<T>::release;
-		m_all_pyclass.push_back(tmp);
+                m_all_pyclass.push_back(tmp);
 
-		return m_all_pyclass.back();
-	}
+                return m_all_pyclass.back();
+        }
 
     //! 将需要注册的函数、类型注册到python虚拟机
     int init(const string& mod_name_, string doc_ = "");
@@ -610,26 +610,26 @@ private:
 private:
     string                              m_mod_name;
     string                              m_mod_doc;
-	vector<PyMethodDef>					m_pymethod_defs;
-	vector<reg_info_t>   				m_func_info;
+        vector<PyMethodDef>                                        m_pymethod_defs;
+        vector<reg_info_t>                                   m_func_info;
 
-	//! reg class
-	vector<pyclass_regigster_tool_t>	m_all_pyclass;
-	
+        //! reg class
+        vector<pyclass_regigster_tool_t>        m_all_pyclass;
+        
 };
 
 int ffpython_t::add_path(const string& path_)
 {
-	char buff[1024];
+        char buff[1024];
     SAFE_SPRINTF(buff, sizeof(buff), "import sys\nif '%s' not in sys.path:\n\tsys.path.append('%s')\n", path_.c_str(), path_.c_str());
-	PyRun_SimpleString(buff);
-	return 0;
+        PyRun_SimpleString(buff);
+        return 0;
 }
 
 int ffpython_t::run_string(const string& py_)
 {
-	PyRun_SimpleString(py_.c_str());
-	return 0;
+        PyRun_SimpleString(py_.c_str());
+        return 0;
 }
 int ffpython_t::init(const string& mod_name_, string doc_)
 {
@@ -746,22 +746,22 @@ PyObject* ffpython_t::init_method()
 
         char buff[1024];
         SAFE_SPRINTF(buff, sizeof(buff), 
-			"_tmp_ff_ = None\nif '%s' in globals():\n\t_tmp_ff_ = globals()['%s']\n"
+                        "_tmp_ff_ = None\nif '%s' in globals():\n\t_tmp_ff_ = globals()['%s']\n"
             "def %s(%s):\n"
             "\t'''%s'''\n"
             "\treturn %s.%s(%ld,(%s))\n"
             "import %s\n"
             "%s.%s = %s\n"
             "%s = None\n"
-			"if _tmp_ff_:\n\tglobals()['%s'] = _tmp_ff_\n_tmp_ff_ = None\n",
-			m_func_info[i].func_name.c_str(), m_func_info[i].func_name.c_str(), 
+                        "if _tmp_ff_:\n\tglobals()['%s'] = _tmp_ff_\n_tmp_ff_ = None\n",
+                        m_func_info[i].func_name.c_str(), m_func_info[i].func_name.c_str(), 
             m_func_info[i].func_name.c_str(), pystr_args.c_str(),
             m_func_info[i].doc.c_str(), 
             m_mod_name.c_str(), m_func_info[i].func_impl_name.c_str(), m_func_info[i].func_addr, pystr_args_only_name.c_str(),
             m_mod_name.c_str(),
             m_mod_name.c_str(), m_func_info[i].func_name.c_str(), m_func_info[i].func_name.c_str(),
             m_func_info[i].func_name.c_str(),
-			m_func_info[i].func_name.c_str()
+                        m_func_info[i].func_name.c_str()
             );
 
         //printf(buff);
@@ -821,7 +821,7 @@ int ffpython_t::init_pyclass(PyObject* m)
             m_all_pyclass[i].pymethod_def.push_back(tmp);
 
         }
-		 PyMethodDef tmp_del = {"delete",
+                 PyMethodDef tmp_del = {"delete",
                 m_all_pyclass[i].delete_func,
                 METH_VARARGS,
                 "delete obj"
@@ -857,12 +857,12 @@ int ffpython_t::init_pyclass(PyObject* m)
             0,                         /*tp_as_buffer*/
             Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
             m_all_pyclass[i].doc.c_str(),           /* tp_doc */
-            0,		               /* tp_traverse */
-            0,		               /* tp_clear */
-            0,		               /* tp_richcompare */
-            0,		               /* tp_weaklistoffset */
-            0,		               /* tp_iter */
-            0,		               /* tp_iternext */
+            0,                               /* tp_traverse */
+            0,                               /* tp_clear */
+            0,                               /* tp_richcompare */
+            0,                               /* tp_weaklistoffset */
+            0,                               /* tp_iter */
+            0,                               /* tp_iternext */
             &(m_all_pyclass[i].pymethod_def.front()),//Noddy_methods,             /* tp_methods */
             0,//Noddy_members,             /* tp_members */
             &(m_all_pyclass[i].pyproperty_def.front()),//Noddy_getseters,           /* tp_getset */
@@ -899,7 +899,7 @@ int ffpython_t::init_pyclass(PyObject* m)
 
         char buff[1024];
         SAFE_SPRINTF(buff, sizeof(buff),
-			"_tmp_ff_ = None\nif '%s' in globals():\n\t_tmp_ff_ = globals()['%s']\n"
+                        "_tmp_ff_ = None\nif '%s' in globals():\n\t_tmp_ff_ = globals()['%s']\n"
             "import %s\n"
             "class %s:\n"
             "\t'''%s'''\n"
@@ -909,7 +909,7 @@ int ffpython_t::init_pyclass(PyObject* m)
             "\t\t\tself.obj = assign_obj_\n"
             "\t\t\treturn\n"
             "\t\tself.obj = %s(0,(%s))\n",
-			m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
+                        m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
             m_mod_name.c_str(),
             m_all_pyclass[i].class_name.c_str(),
             m_all_pyclass[i].doc.c_str(),
@@ -920,12 +920,12 @@ int ffpython_t::init_pyclass(PyObject* m)
             );
         
         string gen_class_str = buff;
-		SAFE_SPRINTF(buff, sizeof(buff),
+                SAFE_SPRINTF(buff, sizeof(buff),
             "\tdef delete(self):\n"//! 定义init函数
-				"\t\t'''delete obj'''\n"
-				"\t\tself.obj.delete()\n");
-		gen_class_str += buff;
-		//! 增加析构函数
+                                "\t\t'''delete obj'''\n"
+                                "\t\tself.obj.delete()\n");
+                gen_class_str += buff;
+                //! 增加析构函数
         //! 增加属性
         for (size_t c = 0; c < m_all_pyclass[i].propertys_info.size(); ++c)
         {
@@ -1006,10 +1006,10 @@ int ffpython_t::init_pyclass(PyObject* m)
         SAFE_SPRINTF(buff, sizeof(buff), 
             "%s.%s = %s\n"
             "%s = None\n"
-			"if _tmp_ff_:\n\tglobals()['%s'] = _tmp_ff_\n_tmp_ff_ = None\n",
+                        "if _tmp_ff_:\n\tglobals()['%s'] = _tmp_ff_\n_tmp_ff_ = None\n",
             m_mod_name.c_str(), m_all_pyclass[i].class_name.c_str(), m_all_pyclass[i].class_name.c_str(),
             m_all_pyclass[i].class_name.c_str(),
-			m_all_pyclass[i].class_name.c_str()
+                        m_all_pyclass[i].class_name.c_str()
             );
         gen_class_str += buff;
         //printf(gen_class_str.c_str());
@@ -1055,23 +1055,23 @@ pyclass_regigster_tool_t* ffpython_t::get_pyclass_info_by_name(const string& nam
 template<typename T>
 struct type_ref_traits_t
 {
-    typedef T	value_t;
-    typedef T&	ref_t;
-    value_t		value; 
+    typedef T        value_t;
+    typedef T&        ref_t;
+    value_t                value; 
 };
 template<typename T>
 struct type_ref_traits_t<T&>
 {
-    typedef T	value_t;
-    typedef T&	ref_t;
-    value_t		value; 
+    typedef T        value_t;
+    typedef T&        ref_t;
+    value_t                value; 
 };
 template<typename T>
 struct type_ref_traits_t<const T&>
 {
-    typedef T	value_t;
-    typedef T&	ref_t;
-    value_t		value;
+    typedef T        value_t;
+    typedef T&        ref_t;
+    value_t                value;
 };
 //! 用于判断是否是可选参数
 template<typename T>
@@ -1646,60 +1646,60 @@ private:
 //! 封装调用python函数
 int pycall_t::call_func(PyObject *pModule, const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
 {
-	PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
-	if (pFunc && PyCallable_Check(pFunc)) {
-		PyObject *pArgs = pyarg_.get_args();
-		PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
-		pyarg_.release();//! 等价于Py_DECREF(pArgs);
+        PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
+        if (pFunc && PyCallable_Check(pFunc)) {
+                PyObject *pArgs = pyarg_.get_args();
+                PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
+                pyarg_.release();//! 等价于Py_DECREF(pArgs);
 
-		if (pValue != NULL) {
-			if (pyret_.parse_value(pValue))
-			{
-				err_ += "value returned is not ";
-				err_ += pyret_.return_type();
-				err_ += string(" ") + func_name_  + " in " + mod_name_;
-			}
-			Py_DECREF(pValue);
-		}
-	}
-	else
-	{
-		err_ += "Cannot find function ";
-		err_ += func_name_ + " in " + mod_name_ + ",";
-	}
+                if (pValue != NULL) {
+                        if (pyret_.parse_value(pValue))
+                        {
+                                err_ += "value returned is not ";
+                                err_ += pyret_.return_type();
+                                err_ += string(" ") + func_name_  + " in " + mod_name_;
+                        }
+                        Py_DECREF(pValue);
+                }
+        }
+        else
+        {
+                err_ += "Cannot find function ";
+                err_ += func_name_ + " in " + mod_name_ + ",";
+        }
 
-	Py_XDECREF(pFunc);
-	if (PyErr_Occurred())
-	{
-		pyops_t::traceback(err_);
-		return 0;
-	}
-	return 0;
+        Py_XDECREF(pFunc);
+        if (PyErr_Occurred())
+        {
+                pyops_t::traceback(err_);
+                return 0;
+        }
+        return 0;
 }
 template<typename T>
 const T& pycall_t::call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
 {
-	PyObject *pName = NULL, *pModule = NULL;
-	string err_msg;
+        PyObject *pName = NULL, *pModule = NULL;
+        string err_msg;
 
-	pName   = PyString_FromString(mod_name_.c_str());
-	pModule = PyImport_Import(pName);
-	Py_DECREF(pName);
-	if (NULL == pModule)
-	{
-		pyops_t::traceback(err_msg);
-		throw runtime_error(err_msg.c_str());
-		return pyret.get_value();
-	}
+        pName   = PyString_FromString(mod_name_.c_str());
+        pModule = PyImport_Import(pName);
+        Py_DECREF(pName);
+        if (NULL == pModule)
+        {
+                pyops_t::traceback(err_msg);
+                throw runtime_error(err_msg.c_str());
+                return pyret.get_value();
+        }
 
-	call_func(pModule, mod_name_, func_name_, pyarg_, pyret, err_msg);
-	Py_DECREF(pModule);
+        call_func(pModule, mod_name_, func_name_, pyarg_, pyret, err_msg);
+        Py_DECREF(pModule);
 
-	if (!err_msg.empty())
-	{
-		throw runtime_error(err_msg.c_str());
-	}
-	return pyret.get_value();
+        if (!err_msg.empty())
+        {
+                throw runtime_error(err_msg.c_str());
+        }
+        return pyret.get_value();
 }
 
 
