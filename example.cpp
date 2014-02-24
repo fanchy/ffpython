@@ -126,8 +126,11 @@ void test_register_inherit_class(ffpython_t& ffpython)
 void test_cpp_obj_to_py(ffpython_t& ffpython)
 {
     foo_t tmp_foo(2013);
+	vector<foo_t*> vt;
+	vt.push_back(&tmp_foo);
     ffpython.call<void>("fftest", "test_cpp_obj_to_py", &tmp_foo);
 	printf("test_cpp_obj_to_py changed m_value=%d\n", tmp_foo.m_value);
+	ffpython.call<void>("fftest", "test_cpp_obj_to_py_ext", vt);
 }
 
 void test_cpp_obj_py_obj(ffpython_t& ffpython)

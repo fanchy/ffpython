@@ -39,12 +39,18 @@ def test_register_inherit_class():
 	dumy.dump()
 	print('test_register_inherit_class', dumy)
 
+def test_cpp_obj_to_py_ext(foo):
+	print('test_cpp_obj_to_py_ext', len(foo))
+	for k in range(0, len(foo)):
+		print('test_cpp_obj_to_py_ext', k, foo[k].m_value)
+	
 def test_cpp_obj_to_py(foo):
 	import ext2
 	print("test_cpp_obj_to_py get_val:", foo.get_value())
 	foo.set_value(778899)
 	print("test_cpp_obj_to_py get_val:", foo.get_value(), foo.m_value)
 	foo.test_stl({"key": [11,22,33] })
+	foo.m_value = 100
 	print('test_cpp_obj_to_py test_register_base_class', foo)
 
 def test_cpp_obj_py_obj(dumy):
