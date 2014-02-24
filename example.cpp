@@ -127,6 +127,7 @@ void test_cpp_obj_to_py(ffpython_t& ffpython)
 {
     foo_t tmp_foo(2013);
     ffpython.call<void>("fftest", "test_cpp_obj_to_py", &tmp_foo);
+	printf("test_cpp_obj_to_py changed m_value=%d\n", tmp_foo.m_value);
 }
 
 void test_cpp_obj_py_obj(ffpython_t& ffpython)

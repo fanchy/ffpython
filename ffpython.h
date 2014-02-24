@@ -901,7 +901,7 @@ int ffpython_t::init_pyclass(PyObject* m)
         SAFE_SPRINTF(buff, sizeof(buff),
                         "_tmp_ff_ = None\nif '%s' in globals():\n\t_tmp_ff_ = globals()['%s']\n"
             "import %s\n"
-            "class %s:\n"
+            "class %s(object):\n"
             "\t'''%s'''\n"
             "\tdef __init__(self, %s assign_obj_ = 0):\n"//! ¶¨Òåinitº¯Êý
             "\t\t'''%s'''\n"
