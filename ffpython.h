@@ -113,10 +113,15 @@ class pytype_tool_impl_t;
 //! 封装调用python函数的C API
 struct pycall_t
 {
-        static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_,
-                                                        pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_);
+    static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_,
+                         pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_);
+    static int call_func_obj(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_);
     template<typename T>
     static const T& call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret);
+    template<typename T>
+    static const T& call_obj_method(PyObject *pObj, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret);
+    template<typename T>
+    static const T& call_lambda(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret);
 };
 //! 用于扩展python的工具类，用来解析参数
 struct pyext_tool_t;
@@ -399,25 +404,25 @@ public:
 
     static int init_py();
     static int final_py();
-        static int add_path(const string& path_);
-        static int run_string(const string& py_);
-        static int reload(const string& py_);
-        static int load(const string& py_);
+    static int add_path(const string& path_);
+    static int run_string(const string& py_);
+    static int reload(const string& py_);
+    static int load(const string& py_);
     //! 注册static function，
     template<typename T>
     ffpython_t& reg(T func_, const string& func_name_, string doc_ = "")
     {
-                reg_info_t tmp;
-                tmp.args_num = pyext_func_traits_t<T>::args_num();
-                tmp.option_args_num = pyext_func_traits_t<T>::option_args_num();
-                tmp.func     = (PyCFunction)pyext_func_traits_t<T>::pyfunc;
-                tmp.func_name= func_name_;
-                tmp.func_impl_name = func_name_ + "_internal_";
-                tmp.doc      = doc_;
-                tmp.doc_impl = string("internal use, please call ") + func_name_;
-                tmp.func_addr= (long)func_;
-                
-                m_func_info.push_back(tmp);
+        reg_info_t tmp;
+        tmp.args_num = pyext_func_traits_t<T>::args_num();
+        tmp.option_args_num = pyext_func_traits_t<T>::option_args_num();
+        tmp.func     = (PyCFunction)pyext_func_traits_t<T>::pyfunc;
+        tmp.func_name= func_name_;
+        tmp.func_impl_name = func_name_ + "_internal_";
+        tmp.doc      = doc_;
+        tmp.doc_impl = string("internal use, please call ") + func_name_;
+        tmp.func_addr= (long)func_;
+        
+        m_func_info.push_back(tmp);
         return *this;
     }
 
@@ -433,23 +438,23 @@ public:
         pyclass_base_info_t<T>::pytype_info.total_args_num = pyext_func_traits_t<CTOR>::args_num() + 
                                                                      pyext_func_traits_t<CTOR>::option_args_num();
 
-                pyclass_regigster_tool_t tmp;
-                tmp.class_name                = class_name_;
-                tmp.class_real_name        = class_name_ + "_internal_";
-                tmp.inherit_name        = inherit_name_;
-                tmp.doc             = doc_;
-                tmp.dector                        = (destructor)pyclass_base_info_t<T>::free_obj;
-                tmp.init                        = (initproc)pyclass_ctor_tool_t<T, CTOR>::init_obj;
-                tmp.ctor                        = pyclass_base_info_t<T>::alloc_obj;
-                tmp.type_size                = sizeof(typename pyclass_base_info_t<T>::obj_data_t);
+        pyclass_regigster_tool_t tmp;
+        tmp.class_name                = class_name_;
+        tmp.class_real_name        = class_name_ + "_internal_";
+        tmp.inherit_name        = inherit_name_;
+        tmp.doc             = doc_;
+        tmp.dector                        = (destructor)pyclass_base_info_t<T>::free_obj;
+        tmp.init                        = (initproc)pyclass_ctor_tool_t<T, CTOR>::init_obj;
+        tmp.ctor                        = pyclass_base_info_t<T>::alloc_obj;
+        tmp.type_size                = sizeof(typename pyclass_base_info_t<T>::obj_data_t);
         tmp.args_num        = pyext_func_traits_t<CTOR>::args_num();
         tmp.option_args_num = pyext_func_traits_t<CTOR>::option_args_num();
         tmp.static_pytype_info = &(pyclass_base_info_t<T>::pytype_info);
         //! 注册析构函数,python若不调用析构函数,当对象被gc时自动调用
         tmp.delete_func = (PyCFunction)pyclass_base_info_t<T>::release;
-                m_all_pyclass.push_back(tmp);
+            m_all_pyclass.push_back(tmp);
 
-                return m_all_pyclass.back();
+            return m_all_pyclass.back();
         }
 
     //! 将需要注册的函数、类型注册到python虚拟机
@@ -534,7 +539,7 @@ public:
     }
     template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
              typename ARG8, typename ARG9>
-        RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+    RET_V call(const string& mod_name_, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
         const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8, const ARG9& a9)
     {
         pycall_arg_t args(9);
@@ -542,8 +547,183 @@ public:
         pytype_tool_impl_t<RET_V> pyret;
         return pycall_t::call<RET_V>(mod_name_, func_, args, pyret);
     }
-
-    //! 获取模块中变量的值
+    //!call python class method begin******************************************************************
+    template<typename RET>
+    RET_V obj_call(PyObject* pobj, const string& func_)
+    {
+        pycall_arg_t args(0);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1)
+    {
+        pycall_arg_t args(1);
+        args.add(a1);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2)
+    {
+        pycall_arg_t args(2);
+        args.add(a1).add(a2);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3)
+    {
+        pycall_arg_t args(3);
+        args.add(a1).add(a2).add(a3);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4)
+    {
+        pycall_arg_t args(4);
+        args.add(a1).add(a2).add(a3).add(a4);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5)
+    {
+        pycall_arg_t args(5);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5,const ARG6& a6)
+    {
+        pycall_arg_t args(6);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5,const ARG6& a6,const ARG7& a7)
+    {
+        pycall_arg_t args(7);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+             typename ARG8>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8)
+    {
+        pycall_arg_t args(8);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+             typename ARG8, typename ARG9>
+    RET_V obj_call(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+        const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8, const ARG9& a9)
+    {
+        pycall_arg_t args(9);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8).add(a9);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_obj_method<RET_V>(pobj, func_, args, pyret);
+    }
+    //!call python class method end******************************************************************
+    
+    //!call python lambad function begin ############################################################
+    template<typename RET>
+    RET_V call_lambda(PyObject* pobj)
+    {
+        pycall_arg_t args(0);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1)
+    {
+        pycall_arg_t args(1);
+        args.add(a1);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1, const ARG2& a2)
+    {
+        pycall_arg_t args(2);
+        args.add(a1).add(a2);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1, const ARG2& a2, const ARG3& a3)
+    {
+        pycall_arg_t args(3);
+        args.add(a1).add(a2).add(a3);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4)
+    {
+        pycall_arg_t args(4);
+        args.add(a1).add(a2).add(a3).add(a4);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5)
+    {
+        pycall_arg_t args(5);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5,const ARG6& a6)
+    {
+        pycall_arg_t args(6);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5,const ARG6& a6,const ARG7& a7)
+    {
+        pycall_arg_t args(7);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+             typename ARG8>
+    RET_V call_lambda(PyObject* pobj, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+                const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8)
+    {
+        pycall_arg_t args(8);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    template<typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7,
+             typename ARG8, typename ARG9>
+    RET_V call_lambda(PyObject* pobj, const string& func_, const ARG1& a1, const ARG2& a2, const ARG3& a3, const ARG4& a4,
+        const ARG5& a5, const ARG6& a6, const ARG7& a7, const ARG8& a8, const ARG9& a9)
+    {
+        pycall_arg_t args(9);
+        args.add(a1).add(a2).add(a3).add(a4).add(a5).add(a6).add(a7).add(a8).add(a9);
+        pytype_tool_impl_t<RET_V> pyret;
+        return pycall_t::call_lambda<RET_V>(pobj, args, pyret);
+    }
+    //!call python lambad function ennd ############################################################
     template<typename RET>
     RET_V get_global_var(const string& mod_name_, const string& var_name_)
     {
@@ -1646,63 +1826,133 @@ private:
 //! 封装调用python函数
 int pycall_t::call_func(PyObject *pModule, const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
 {
-        PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
-        if (pFunc && PyCallable_Check(pFunc)) {
-                PyObject *pArgs = pyarg_.get_args();
-                PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
-                pyarg_.release();//! 等价于Py_DECREF(pArgs);
+    PyObject *pFunc = PyObject_GetAttrString(pModule, func_name_.c_str());
+    if (pFunc && PyCallable_Check(pFunc)) {
+        PyObject *pArgs = pyarg_.get_args();
+        PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
+        pyarg_.release();//! 等价于Py_DECREF(pArgs);
 
-                if (pValue != NULL) {
-                        if (pyret_.parse_value(pValue))
-                        {
-                                err_ += "value returned is not ";
-                                err_ += pyret_.return_type();
-                                err_ += string(" ") + func_name_  + " in " + mod_name_;
-                        }
-                        Py_DECREF(pValue);
-                }
+        if (pValue != NULL) {
+            if (pyret_.parse_value(pValue))
+            {
+                err_ += "value returned is not ";
+                err_ += pyret_.return_type();
+                err_ += string(" ") + func_name_  + " in " + mod_name_;
+            }
+            Py_DECREF(pValue);
         }
-        else
-        {
-                err_ += "Cannot find function ";
-                err_ += func_name_ + " in " + mod_name_ + ",";
-        }
+    }
+    else
+    {
+        err_ += "Cannot find function ";
+        err_ += func_name_ + " in " + mod_name_ + ",";
+    }
 
-        Py_XDECREF(pFunc);
-        if (PyErr_Occurred())
-        {
-                pyops_t::traceback(err_);
-                return 0;
-        }
+    Py_XDECREF(pFunc);
+    if (PyErr_Occurred())
+    {
+        pyops_t::traceback(err_);
         return 0;
+    }
+    return 0;
 }
+
+int pycall_t::call_func_obj(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_tool_t& pyret_, string& err_)
+{
+    if (pFunc && PyCallable_Check(pFunc)) {
+        PyObject *pArgs = pyarg_.get_args();
+        PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
+        pyarg_.release();//! 等价于Py_DECREF(pArgs);
+
+        if (pValue != NULL) {
+            if (pyret_.parse_value(pValue))
+            {
+                err_ += "value returned is not ";
+                err_ += pyret_.return_type();
+            }
+            Py_DECREF(pValue);
+        }
+    }
+    else
+    {
+        err_ += "not function ";
+    }
+
+    if (PyErr_Occurred())
+    {
+        pyops_t::traceback(err_);
+        return 0;
+    }
+    return 0;
+}
+
 template<typename T>
 const T& pycall_t::call(const string& mod_name_, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
 {
-        PyObject *pName = NULL, *pModule = NULL;
-        string err_msg;
+    PyObject *pName = NULL, *pModule = NULL;
+    string err_msg;
 
-        pName   = PyString_FromString(mod_name_.c_str());
-        pModule = PyImport_Import(pName);
-        Py_DECREF(pName);
-        if (NULL == pModule)
-        {
-                pyops_t::traceback(err_msg);
-                throw runtime_error(err_msg.c_str());
-                return pyret.get_value();
-        }
-
-        call_func(pModule, mod_name_, func_name_, pyarg_, pyret, err_msg);
-        Py_DECREF(pModule);
-
-        if (!err_msg.empty())
-        {
-                throw runtime_error(err_msg.c_str());
-        }
+    pName   = PyString_FromString(mod_name_.c_str());
+    pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+    if (NULL == pModule)
+    {
+        pyops_t::traceback(err_msg);
+        throw runtime_error(err_msg.c_str());
         return pyret.get_value();
+    }
+
+    call_func(pModule, mod_name_, func_name_, pyarg_, pyret, err_msg);
+    Py_DECREF(pModule);
+
+    if (!err_msg.empty())
+    {
+        throw runtime_error(err_msg.c_str());
+    }
+    return pyret.get_value();
+}
+template<typename T>
+const T& pycall_t::call_obj_method(PyObject *pObj, const string& func_name_, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
+{
+    string err_msg;
+    if (NULL == pObj)
+    {
+        pyops_t::traceback(err_msg);
+        throw runtime_error(err_msg.c_str());
+        return pyret.get_value();
+    }
+
+    static string mod_name_ = "NaN";
+    call_func(pObj, mod_name_, func_name_, pyarg_, pyret, err_msg);
+
+    if (!err_msg.empty())
+    {
+        throw runtime_error(err_msg.c_str());
+    }
+    return pyret.get_value();
 }
 
+template<typename T>
+const T& pycall_t::call_lambda(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret)
+{
+    string err_msg;
+    if (NULL == pFunc)
+    {
+        pyops_t::traceback(err_msg);
+        throw runtime_error(err_msg.c_str());
+        return pyret.get_value();
+    }
 
+    call_func_obj(pFunc, pyarg_, pyret, err_msg);
+
+    if (!err_msg.empty())
+    {
+        throw runtime_error(err_msg.c_str());
+    }
+    return pyret.get_value();
+}
+
+    
 //! 用于扩展python的工具类，用来解析参数
 struct pyext_tool_t
 {

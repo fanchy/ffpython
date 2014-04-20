@@ -64,3 +64,15 @@ def test_cpp_obj_py_obj(dumy):
 	print('test_cpp_obj_py_obj', dumy)
 	
 	return dumy
+
+class pyclass_t:
+    def __init__(self):
+        print('pyclass_t init....')
+    def sayHi(self, a1, a2):
+        print('sayHi..', a1, a2)
+def test_cpp_obj_return_py_obj():
+    return pyclass_t()
+def test_cpp_obj_return_py_lambda():
+    def test_lambda(a1):
+        print('test_lambda....', a1)
+    return test_lambda

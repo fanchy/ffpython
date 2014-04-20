@@ -138,8 +138,21 @@ void test_cpp_obj_py_obj(ffpython_t& ffpython)
     dumy_t tmp_foo(2013);
     
     foo_t* p = ffpython.call<foo_t*>("fftest", "test_cpp_obj_py_obj", &tmp_foo);
+    p = NULL;
 }
 
+void test_py_class_lambda(ffpython_t& ffpython)
+{
+    PyObject* pobj = ffpython.call<PyObject*>("fftest", "test_cpp_obj_return_py_obj");
+    ffpython.obj_call<void>(pobj, "sayHi", 1, string("soNice"));
+    
+    PyObject* pFunc= ffpython.call<PyObject*>("fftest", "test_cpp_obj_return_py_lambda");
+    ffpython.call_lambda<void>(pFunc, 112233);
+    
+    Py_DECREF(pFunc);
+    Py_DECREF(pobj);
+    
+}
 
 int main(int argc, char* argv[])
 {
@@ -157,10 +170,12 @@ int main(int argc, char* argv[])
     TestGuard("test_cpp_obj_to_py", test_cpp_obj_to_py(ffpython));
     TestGuard("test_cpp_obj_py_obj", test_cpp_obj_py_obj(ffpython));
     
+    TestGuard("test_py_class_lambda", test_py_class_lambda(ffpython));
+    
 #ifdef _WIN32
 	system("pause");
 #endif
 	Py_Finalize();
-    
+    printf("main exit...\n");
     return 0;
 }
