@@ -149,9 +149,8 @@ void test_py_class_lambda(ffpython_t& ffpython)
     PyObject* pFunc= ffpython.call<PyObject*>("fftest", "test_cpp_obj_return_py_lambda");
     ffpython.call_lambda<void>(pFunc, 112233);
     
-    Py_DECREF(pFunc);
-    Py_DECREF(pobj);
-    
+    Py_XDECREF(pFunc);
+    Py_XDECREF(pobj);
 }
 
 int main(int argc, char* argv[])

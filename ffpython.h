@@ -44,10 +44,10 @@ struct pyoption_t
         
         const value_t& value(const value_t& default_)
         {
-                if (is_set())
-                        return m_value;
-                else
-                        return default_;
+            if (is_set())
+                return m_value;
+            else
+                return default_;
         }
         bool        m_set_flag;
         value_t m_value;
@@ -69,7 +69,7 @@ struct pycall_arg_t
     {}
     ~pycall_arg_t()
     {
-                release();
+        release();
     }
     PyObject * get_args() const
     {
@@ -86,14 +86,14 @@ struct pycall_arg_t
         }
         return *this;
     }
-        void release()
+    void release()
+    {
+        if (pargs_tuple)
         {
-                if (pargs_tuple)
-                {
-                        Py_DECREF(pargs_tuple);
-                        pargs_tuple = NULL;
-                }
+            Py_DECREF(pargs_tuple);
+            pargs_tuple = NULL;
         }
+    }
     int         arg_index;
     PyObject *  pargs_tuple;
 };
@@ -223,15 +223,15 @@ struct pyclass_base_info_t
         PyObject_HEAD;
         T* obj;
         bool forbid_release;
-                void disable_auto_release(){ forbid_release = true; }
-                void release()
-                {
-                        if (obj)
-                        {
-                                delete obj;
-                                obj = NULL;
-                        }
-                }
+        void disable_auto_release(){ forbid_release = true; }
+        void release()
+        {
+            if (obj)
+            {
+                delete obj;
+                obj = NULL;
+            }
+        }
     };
 
     static void free_obj(obj_data_t* self)
@@ -336,7 +336,7 @@ public:
     pyobj_alloc_t ctor;
 
     //!  member functions
-        PyCFunction                      delete_func;
+    PyCFunction                      delete_func;
     vector<method_info_t>        methods_info;
     //! property 
     vector<property_info_t>        propertys_info;
@@ -382,18 +382,18 @@ public:
 
 class ffpython_t
 {
-        struct reg_info_t
-        {
-                reg_info_t():args_num(0),option_args_num(0),func_addr(0){}
-                int  args_num;
-                int  option_args_num;
-                long func_addr;
-                PyCFunction func;
-                string func_name;
-                string func_impl_name;
-                string doc;
-                string doc_impl;
-        };
+    struct reg_info_t
+    {
+        reg_info_t():args_num(0),option_args_num(0),func_addr(0){}
+        int  args_num;
+        int  option_args_num;
+        long func_addr;
+        PyCFunction func;
+        string func_name;
+        string func_impl_name;
+        string doc;
+        string doc_impl;
+    };
 
 public:
     ffpython_t()
@@ -401,7 +401,10 @@ public:
         if (!Py_IsInitialized())
             Py_Initialize();
     }
-
+    ~ffpython_t()
+    {
+        clear_cache_pyobject();
+    }
     static int init_py();
     static int final_py();
     static int add_path(const string& path_);
@@ -427,9 +430,9 @@ public:
     }
 
     //! 注册c++ class
-        template<typename T, typename CTOR>
-        pyclass_regigster_tool_t& reg_class(const string& class_name_, string doc_ = "", string inherit_name_ = "")
-        {
+    template<typename T, typename CTOR>
+    pyclass_regigster_tool_t& reg_class(const string& class_name_, string doc_ = "", string inherit_name_ = "")
+    {
         if (pyclass_base_info_t<T>::pytype_info.class_name.empty() == false)
             throw runtime_error("this type has been registed");
 
@@ -455,7 +458,7 @@ public:
             m_all_pyclass.push_back(tmp);
 
             return m_all_pyclass.back();
-        }
+    }
 
     //! 将需要注册的函数、类型注册到python虚拟机
     int init(const string& mod_name_, string doc_ = "");
@@ -779,6 +782,22 @@ public:
 
         return ret != -1? 0: -1;
     }
+    
+    void cache_pyobject(PyObject* pobj)
+    {
+        m_cache_pyobject.push_back(pobj);
+    }
+    void clear_cache_pyobject()
+    {
+        if (Py_IsInitialized())
+        {
+            for (size_t i = 0; i < m_cache_pyobject.size(); ++i)
+            {
+                Py_XDECREF(m_cache_pyobject[i]);
+            }
+            m_cache_pyobject.clear();
+        }
+    }
 private:
     PyObject* init_method();
     int init_pyclass(PyObject* m);
@@ -787,15 +806,17 @@ private:
     bool is_property_exist(const vector<pyclass_regigster_tool_t::property_info_t>& src_, const string& new_);
     pyclass_regigster_tool_t* get_pyclass_info_by_name(const string& name_);
 
+
 private:
     string                              m_mod_name;
     string                              m_mod_doc;
-        vector<PyMethodDef>                                        m_pymethod_defs;
-        vector<reg_info_t>                                   m_func_info;
-
-        //! reg class
-        vector<pyclass_regigster_tool_t>        m_all_pyclass;
-        
+    vector<PyMethodDef>                 m_pymethod_defs;
+    vector<reg_info_t>                  m_func_info;
+    
+    //! reg class
+    vector<pyclass_regigster_tool_t>    m_all_pyclass;
+    //! cache some pyobject for optimize
+    vector<PyObject*>                   m_cache_pyobject;
 };
 
 int ffpython_t::add_path(const string& path_)
@@ -1875,7 +1896,7 @@ int pycall_t::call_func_obj(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_tool_t
     }
     else
     {
-        err_ += "not function ";
+        err_ += "invalid function";
     }
 
     if (PyErr_Occurred())
@@ -1938,7 +1959,7 @@ const T& pycall_t::call_lambda(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_too
     string err_msg;
     if (NULL == pFunc)
     {
-        pyops_t::traceback(err_msg);
+        err_msg = "can not call null PyObject";
         throw runtime_error(err_msg.c_str());
         return pyret.get_value();
     }
