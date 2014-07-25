@@ -1545,11 +1545,21 @@ struct pytype_traits_t<string>
     {
         if (true == PyString_Check(pvalue_))
         {
-            m_ret = PyString_AsString(pvalue_);
+            char* pDest = NULL;
+            Py_ssize_t  nLen    = 0;
+            PyString_AsStringAndSize(pvalue_, &pDest, &nLen);
+            
+            m_ret.assign(pDest, nLen);
             return 0;
         }
         else if (true == PyUnicode_Check(pvalue_))
         {
+            char* pDest = NULL;
+            Py_ssize_t  nLen    = 0;
+            PyString_AsStringAndSize(pvalue_, &pDest, &nLen);
+            m_ret.assign(pDest, nLen);
+            return 0;
+            /*
 #ifdef _WIN32
             PyObject* retStr = PyUnicode_AsEncodedString(pvalue_, "gbk", "");
 #else
@@ -1561,6 +1571,7 @@ struct pytype_traits_t<string>
                 Py_XDECREF(retStr);
                 return 0;
             }
+            */
         }
         return -1;
     }
