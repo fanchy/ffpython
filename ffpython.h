@@ -1578,6 +1578,46 @@ struct pytype_traits_t<string>
     static const char* get_typename() { return "string";}
 };
 
+#ifdef _WIN32
+template<>
+struct pytype_traits_t<wstring>
+{
+    static PyObject* pyobj_from_cppobj(const wstring& wstr)
+    {
+		return PyUnicode_FromWideChar(wstr.c_str(), wstr.length());
+    }
+    static int pyobj_to_cppobj(PyObject *pvalue_, wstring& wstr_ret)
+    {
+		//wstr_ret.reserve(10000);
+		//PyUnicode_AsWideChar(pvalue_,(wchar_t *) wstr_ret.data(), 100);
+		//return 0;
+		string m_ret;
+        if (true == PyString_Check(pvalue_))
+        {
+			PyObject* retStr = PyUnicode_FromObject(pvalue_);
+			if (retStr)
+			{
+				int n = PyUnicode_GetSize(retStr);
+				wstr_ret.resize(n);
+				n = PyUnicode_AsWideChar((PyUnicodeObject*)retStr, &(wstr_ret[0]), n);
+				Py_XDECREF(retStr);
+				return 0;
+			}
+            return 0;
+        }
+        else if (true == PyUnicode_Check(pvalue_))
+        {
+			int n = PyUnicode_GetSize(pvalue_);
+			wstr_ret.resize(n);
+			n = PyUnicode_AsWideChar((PyUnicodeObject*)pvalue_, &(wstr_ret[0]), n);
+			return 0;
+        }
+        return -1;
+    }
+    static const char* get_typename() { return "wstring";}
+};
+#endif
+
 template<>
 struct pytype_traits_t<float>
 {
