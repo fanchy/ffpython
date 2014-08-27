@@ -1,4 +1,4 @@
-#ifndef __FFPYTHON_H_
+﻿#ifndef __FFPYTHON_H_
 #define __FFPYTHON_H_
 
 #include <Python.h>
@@ -20,7 +20,7 @@ using namespace std;
 #endif
 
 
-//! ��ȡpython�쳣��Ϣ
+//! 获取python异常信息
 struct pyops_t
 {
     static int traceback(string& ret_)
@@ -126,11 +126,11 @@ struct pyops_t
 };
 struct cpp_void_t{};
 
-//! ���ڳ�ȡ���͡����Ͷ�Ӧ������
+//! 用于抽取类型、类型对应的引用
 template<typename T>
 struct type_ref_traits_t;
 
-//! ����python ��ѡ����
+//! 用于python 可选参数
 template<typename T>
 struct pyoption_t
 {
@@ -151,15 +151,15 @@ struct pyoption_t
         bool        m_set_flag;
         value_t m_value;
 };
-//! �����ж��Ƿ��ǿ�ѡ����
+//! 用于判断是否是可选参数
 template<typename T>
 struct pyoption_traits_t;
 
-//! pytype_traits_t ��װ PyLong_FromLong ���صĲ���������Ϊ����python���ɲ���
+//! pytype_traits_t 封装 PyLong_FromLong 相关的操作，用于为调用python生成参数
 template<typename T>
 struct pytype_traits_t;
 
-//! ���ڵ���python����������tuple���͵�python���������Ĺ�����
+//! 用于调用python函数，生成tuple类型的python函数参数的工具类
 struct pycall_arg_t
 {
     pycall_arg_t(int arg_num):
@@ -197,7 +197,7 @@ struct pycall_arg_t
     PyObject *  pargs_tuple;
 };
 
-//! ���ڵ���python��������ȡ����ֵ�Ĺ�����
+//! 用于调用python函数，获取返回值的工具类
 class pytype_tool_t
 {
 public:
@@ -206,10 +206,10 @@ public:
     virtual const char* return_type() {return "";}
 };
 
-//! ���ڵ���python��������ȡ����ֵ�Ĺ��߷�����
+//! 用于调用python函数，获取返回值的工具泛型类
 template<typename T>
 class pytype_tool_impl_t;
-//! ��װ����python������C API
+//! 封装调用python函数的C API
 struct pycall_t
 {
     static int call_func(PyObject *pModule, const string& mod_name_, const string& func_name_,
@@ -219,7 +219,7 @@ struct pycall_t
         if (pFunc && PyCallable_Check(pFunc)) {
             PyObject *pArgs = pyarg_.get_args();
             PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
-            pyarg_.release();//! �ȼ���Py_DECREF(pArgs);
+            pyarg_.release();//! 等价于Py_DECREF(pArgs);
 
             if (pValue != NULL) {
                 if (pyret_.parse_value(pValue))
@@ -250,7 +250,7 @@ struct pycall_t
         if (pFunc && PyCallable_Check(pFunc)) {
             PyObject *pArgs = pyarg_.get_args();
             PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
-            pyarg_.release();//! �ȼ���Py_DECREF(pArgs);
+            pyarg_.release();//! 等价于Py_DECREF(pArgs);
 
             if (pValue != NULL) {
                 if (pyret_.parse_value(pValue))
@@ -280,22 +280,22 @@ struct pycall_t
     template<typename T>
     static const T& call_lambda(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_tool_impl_t<T>& pyret);
 };
-//! ������չpython�Ĺ����࣬������������
+//! 用于扩展python的工具类，用来解析参数
 struct pyext_tool_t;
 
 
 template<typename T>
 struct pyext_return_tool_t;
 
-//! ������չpython������pyobject���͵ķ���ֵ��python
+//! 用于扩展python，生成pyobject类型的返回值给python
 template <typename T>
 struct pyext_func_traits_t;
 
-//! ������չpython��traits��ע����python�ĺ����ӿ�
+//! 用于扩展python，traits出注册给python的函数接口
 #ifndef PYCTOR
 #define  PYCTOR int (*)
 #endif
-//! ��ʾvoid���ͣ�����void���Ͳ���return����void_ignore_t����
+//! 表示void类型，由于void类型不能return，用void_ignore_t适配
 template<typename T>
 struct void_ignore_t;
 
@@ -313,7 +313,7 @@ struct void_ignore_t<void>
 
 #define  RET_V typename void_ignore_t<RET>::value_t
 
-//! ��¼�����������������໥��ϵ
+//! 记录各个基类和子类的相互关系
 struct cpp_to_pyclass_reg_info_t
 {
     struct inherit_info_t
@@ -360,7 +360,7 @@ struct cpp_to_pyclass_reg_info_t
 };
 
 
-//! ��¼C++ class ��Ӧ��python�е����ơ�������Ϣ��,ȫ��
+//! 记录C++ class 对应到python中的名称、参数信息等,全局
 struct static_pytype_info_t
 {
     string class_name;
@@ -369,7 +369,7 @@ struct static_pytype_info_t
     PyTypeObject* pytype_def;
 };
 
-//! �����࣬�������ɷ���python class�Ľӿڣ��������䡢�ͷ�
+//! 工具类，用于生成分配python class的接口，包括分配、释放
 template<typename T>
 struct pyclass_base_info_t
 {
@@ -416,7 +416,7 @@ struct pyclass_base_info_t
 template<typename T>
 static_pytype_info_t pyclass_base_info_t<T>::pytype_info;
 
-//! ��������pyclass ��ʼ������
+//! 方便生成pyclass 初始化函数
 template <typename CLASS_TYPE, typename CTOR>
 struct pyclass_ctor_tool_t;
 
@@ -424,10 +424,10 @@ struct pyclass_ctor_tool_t;
 template<typename T>
 struct pyclass_method_gen_t;
 
-//! ��ֹ����ָ��ΪNULL���ó���
+//! 防止出现指针为NULL调用出错
 #define  NULL_PTR_GUARD(X) if (NULL == X) {PyErr_SetString(PyExc_TypeError, "obj data ptr NULL");return NULL;}
 
-//! ��������python ��getter��setter�ӿڣ�������c++ class�ĳ�Ա����
+//! 用于生成python 的getter和setter接口，适配于c++ class的成员变量
 template <typename CLASS_TYPE, typename RET>
 struct pyclass_member_func_gen_t
 {
@@ -452,7 +452,7 @@ struct pyclass_member_func_gen_t
     }
 };
 
-//! ����C++ ע��class�Ĺ����࣬����¼class��Ӧ�����ơ���Ա��������Ա����
+//! 用于C++ 注册class的工具类，会记录class对应的名称、成员方法、成员变量
 class pyclass_regigster_tool_t
 {
 public:
@@ -504,7 +504,7 @@ public:
     //! property
     vector<PyGetSetDef>     pyproperty_def;
 
-    //! ��̬������Ҫȫ�ּ�¼�����ͱ�ע��������python ����
+    //! 静态类型需要全局记录该类型被注册成神马python 类型
     static_pytype_info_t*   static_pytype_info;
 
     template<typename FUNC>
@@ -633,7 +633,7 @@ public:
         return 0;
     }
 
-    //! ע��static function��
+    //! 注册static function，
     template<typename T>
     ffpython_t& reg(T func_, const string& func_name_, string doc_ = "")
     {
@@ -651,7 +651,7 @@ public:
         return *this;
     }
 
-    //! ע��c++ class
+    //! 注册c++ class
     template<typename T, typename CTOR>
     pyclass_regigster_tool_t& reg_class(const string& class_name_, string doc_ = "", string inherit_name_ = "")
     {
@@ -675,14 +675,14 @@ public:
         tmp.args_num        = pyext_func_traits_t<CTOR>::args_num();
         tmp.option_args_num = pyext_func_traits_t<CTOR>::option_args_num();
         tmp.static_pytype_info = &(pyclass_base_info_t<T>::pytype_info);
-        //! ע����������,python����������������,��������gcʱ�Զ�����
+        //! 注册析构函数,python若不调用析构函数,当对象被gc时自动调用
         tmp.delete_func = (PyCFunction)pyclass_base_info_t<T>::release;
             m_all_pyclass.push_back(tmp);
 
             return m_all_pyclass.back();
     }
 
-    //! ����Ҫע���ĺ���������ע�ᵽpython������
+    //! 将需要注册的函数、类型注册到python虚拟机
     int init(const string& mod_name_, string doc_ = "")
     {
         m_mod_name = mod_name_;
@@ -692,7 +692,7 @@ public:
         return 0;
     }
 
-    //! ����python����������֧��9������
+    //! 调用python函数，最多支持9个参数
     template<typename RET>
     RET_V call(const string& mod_name_, const string& func_)
     {
@@ -1269,8 +1269,8 @@ private:
                 "\t\t'''delete obj'''\n"
                 "\t\tself.obj.delete()\n");
             gen_class_str += buff;
-            //! ������������
-            //! ��������
+            //! 增加析构函数
+            //! 增加属性
             for (size_t c = 0; c < m_all_pyclass[i].propertys_info.size(); ++c)
             {
                 SAFE_SPRINTF(buff, sizeof(buff), 
@@ -1436,7 +1436,7 @@ struct type_ref_traits_t<const T&>
     typedef T&        ref_t;
     value_t                value;
 };
-//! �����ж��Ƿ��ǿ�ѡ����
+//! 用于判断是否是可选参数
 template<typename T>
 struct pyoption_traits_t
 {
@@ -1448,8 +1448,6 @@ struct pyoption_traits_t<pyoption_t<T> >
     static int is() { return 1;}
 };
 
-
-//! pytype_traits_t ��װ PyLong_FromLong ���صĲ���������Ϊ����python���ɲ���
 
 template<>//typename T>
 struct pytype_traits_t<long>
@@ -1750,10 +1748,6 @@ struct pytype_traits_t<wstring>
     }
     static int pyobj_to_cppobj(PyObject *pvalue_, wstring& wstr_ret)
     {
-        //wstr_ret.reserve(10000);
-        //PyUnicode_AsWideChar(pvalue_,(wchar_t *) wstr_ret.data(), 100);
-        //return 0;
-        string m_ret;
         if (true == PyString_Check(pvalue_))
         {
             PyObject* retStr = PyUnicode_FromObject(pvalue_);
@@ -2126,7 +2120,7 @@ const T& pycall_t::call_lambda(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_too
 }
 
     
-//! ������չpython�Ĺ����࣬������������
+//! 用于扩展python的工具类，用来解析参数
 struct pyext_tool_t
 {
     pyext_tool_t(PyObject* args_):
@@ -2193,16 +2187,16 @@ struct pyext_tool_t
     PyObject* m_arg_tuple;
     int       m_index;
     int       m_size;
-    bool      m_err;//! �Ƿ��쳣
+    bool      m_err;//! 是否异常
     long      m_func_addr;
 };
 
 
-//! ������չpython������pyobject���͵ķ���ֵ��python
+//! 用于扩展python，生成pyobject类型的返回值给python
 template<typename T>
 struct pyext_return_tool_t
 {
-   //! ���ھ�̬����
+    //! 用于静态方法
     template<typename F>
     static PyObject* route_call(F f)
     {
@@ -2259,7 +2253,7 @@ struct pyext_return_tool_t
         return pytype_traits_t<T>::pyobj_from_cppobj(f(a1.value, a2.value, a3.value, a4.value, a5.value, a6.value,
             a7.value, a8.value, a9.value));
     }
-    //! ���ڳ�Ա����
+    //! 用于成员方法
     template<typename O, typename F>
     static PyObject* route_method_call(O o, F f)
     {
@@ -2459,7 +2453,7 @@ struct pyext_return_tool_t<void>
 };
 
 
-//! ������չpython��traits��ע����python�ĺ����ӿ�
+//! 用于扩展python，traits出注册给python的函数接口
 template <typename RET>
 struct pyext_func_traits_t<RET (*)()>
 {
@@ -3474,7 +3468,7 @@ struct pyclass_method_gen_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, AR
     }
 };
 
-//! const���ͳ�Ա����---------------------------------------------------------------------------------------------
+//! const类型成员函数---------------------------------------------------------------------------------------------
 
 template<typename RET, typename CLASS_TYPE>
 struct pyclass_method_gen_t<RET (CLASS_TYPE::*)() const>
