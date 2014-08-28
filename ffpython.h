@@ -157,7 +157,25 @@ struct pyoption_traits_t;
 
 //! pytype_traits_t 封装 PyLong_FromLong 相关的操作，用于为调用python生成参数
 template<typename T>
-struct pytype_traits_t;
+struct pytype_traits_t
+{
+    static PyObject* pyobj_from_cppobj(const char* const val_)
+    {
+        return PyString_FromString(val_);
+    }
+    /*
+    static int pyobj_to_cppobj(PyObject *pvalue_, char*& m_ret)
+    {
+        if (true == PyString_Check(pvalue_))
+        {
+            m_ret = PyString_AsString(pvalue_);
+            return 0;
+        }
+        return -1;
+    }
+    */
+    static const char* get_typename() { return "string";}
+};
 
 //! 用于调用python函数，生成tuple类型的python函数参数的工具类
 struct pycall_arg_t
@@ -1608,9 +1626,9 @@ struct pytype_traits_t<PyObject*>
 };
 
 template<>
-struct pytype_traits_t<const char*>
+struct pytype_traits_t<const char* const>
 {
-    static PyObject* pyobj_from_cppobj(const char*& val_)
+    static PyObject* pyobj_from_cppobj(const char* const val_)
     {
         return PyString_FromString(val_);
     }
