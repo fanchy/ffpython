@@ -38,22 +38,22 @@ struct type_ref_traits_t;
 template<typename T>
 struct pyoption_t
 {
-	typedef typename type_ref_traits_t<T>::value_t value_t;
-	pyoption_t():m_set_flag(false){}
-	bool is_set() const { return m_set_flag;}
-	void set()                        { m_set_flag = true;}
-	value_t&       value()    { return m_value;}
-	const value_t& value() const{ return m_value;}
+    typedef typename type_ref_traits_t<T>::value_t value_t;
+    pyoption_t():m_set_flag(false){}
+    bool is_set() const { return m_set_flag;}
+    void set()                        { m_set_flag = true;}
+    value_t&       value()    { return m_value;}
+    const value_t& value() const{ return m_value;}
 
-	const value_t& value(const value_t& default_)
-	{
-		if (is_set())
-			return m_value;
-		else
-			return default_;
-	}
-	bool        m_set_flag;
-	value_t m_value;
+    const value_t& value(const value_t& default_)
+    {
+        if (is_set())
+            return m_value;
+        else
+            return default_;
+    }
+    bool        m_set_flag;
+    value_t m_value;
 };
 //! 用于判断是否是可选参数
 template<typename T>
