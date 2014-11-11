@@ -150,7 +150,8 @@ struct pycall_t
                     err_ += pyret_.return_type();
                     err_ += string(" ") + func_name_  + " in " + mod_name_;
                 }
-                Py_DECREF(pValue);
+                if (pyret_.need_release())
+                    Py_DECREF(pValue);
             }
         }
         else
@@ -180,7 +181,8 @@ struct pycall_t
                     err_ += "value returned is not ";
                     err_ += pyret_.return_type();
                 }
-                Py_DECREF(pValue);
+                if (pyret_.need_release())
+                    Py_DECREF(pValue);
             }
         }
         else
