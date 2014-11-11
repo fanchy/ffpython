@@ -246,7 +246,8 @@ struct pycall_t
                     err_ += pyret_.return_type();
                     err_ += string(" ") + func_name_  + " in " + mod_name_;
                 }
-                Py_DECREF(pValue);
+                if (pyret_.need_release())
+                    Py_DECREF(pValue);
             }
         }
         else
@@ -276,7 +277,8 @@ struct pycall_t
                     err_ += "value returned is not ";
                     err_ += pyret_.return_type();
                 }
-                Py_DECREF(pValue);
+                if (pyret_.need_release())
+                    Py_DECREF(pValue);
             }
         }
         else
@@ -2069,6 +2071,27 @@ private:
     T*    m_ret;
 };
 
+
+template<>
+class pytype_tool_impl_t<PyObject*>: public pytype_tool_t
+{
+public:
+    pytype_tool_impl_t():m_ret(){}
+
+    virtual int parse_value(PyObject *pvalue_)
+    {
+        if (pytype_traits_t<PyObject*>::pyobj_to_cppobj(pvalue_, m_ret))
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    PyObject* get_value() const { return m_ret; }
+    bool need_release() { return false; }
+private:
+    PyObject*    m_ret;
+};
 
 
 template<typename T>
