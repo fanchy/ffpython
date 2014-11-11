@@ -1096,4 +1096,25 @@ private:
 };
 
 
+template<>
+class pytype_tool_impl_t<PyObject*>: public pytype_tool_t
+{
+public:
+    pytype_tool_impl_t():m_ret(){}
+
+    virtual int parse_value(PyObject *pvalue_)
+    {
+        if (pytype_traits_t<PyObject*>::pyobj_to_cppobj(pvalue_, m_ret))
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    PyObject* get_value() const { return m_ret; }
+    bool need_release() { return false; }
+private:
+    PyObject*    m_ret;
+};
+
 #endif
