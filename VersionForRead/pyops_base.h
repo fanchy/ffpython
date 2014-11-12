@@ -126,6 +126,7 @@ public:
     virtual ~pytype_tool_t(){};
     virtual int parse_value(PyObject *pvalue_) = 0;
     virtual const char* return_type() {return "";}
+    virtual bool need_release() { return false; }
 };
 
 //! 用于调用python函数，获取返回值的工具泛型类
@@ -1106,14 +1107,11 @@ public:
 
     virtual int parse_value(PyObject *pvalue_)
     {
-        if (pytype_traits_t<PyObject*>::pyobj_to_cppobj(pvalue_, m_ret))
-        {
-            return -1;
-        }
+        m_ret = pvalue_;
         return 0;
     }
 
-    PyObject* get_value() const { return m_ret; }
+    PyObject*& get_value()  { return m_ret; }
     bool need_release() { return false; }
 private:
     PyObject*    m_ret;
