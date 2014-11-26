@@ -1012,7 +1012,7 @@ public:
     }
 
     template<typename T>
-    int set_global_var(const string& mod_name_, const string& var_name_, T val_)
+    int set_global_var(const string& mod_name_, const string& var_name_, const T& val_)
     {
         PyObject *pName = NULL, *pModule = NULL;
         string err_msg;
