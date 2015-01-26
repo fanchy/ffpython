@@ -1032,7 +1032,32 @@ public:
 
         return ret != -1? 0: -1;
     }
-    
+    template<typename RET>
+    RET_V getattr(PyObject* pModule, const string& var_name_)
+    {
+        string err_msg;
+        if (NULL == pModule)
+        {
+            throw runtime_error("getattr object ptr null");
+        }
+
+        pytype_tool_impl_t<RET_V> pyret;
+        PyObject *pvalue = PyObject_GetAttrString(pModule, var_name_.c_str());
+
+        if (!pvalue)
+        {
+            pyops_t::traceback(err_msg);
+            throw runtime_error(err_msg.c_str());
+        }
+
+        if (pyret.parse_value(pvalue))
+        {
+            Py_XDECREF(pvalue);
+            throw runtime_error("type invalid");
+        }
+        Py_XDECREF(pvalue);
+        return pyret.get_value();
+    }
     void cache_pyobject(PyObject* pobj)
     {
         m_cache_pyobject.push_back(pobj);
