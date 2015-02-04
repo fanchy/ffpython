@@ -279,8 +279,9 @@ struct pycall_t
                     err_ += "value returned is not ";
                     err_ += pyret_.return_type();
                 }
-                if (pyret_.need_release())
+                if (pyret_.need_release()){
                     Py_DECREF(pValue);
+                }
             }
         }
         else
