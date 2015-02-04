@@ -151,8 +151,9 @@ struct pycall_t
                     err_ += pyret_.return_type();
                     err_ += string(" ") + func_name_  + " in " + mod_name_;
                 }
-                if (pyret_.need_release())
+                if (pyret_.need_release()){
                     Py_DECREF(pValue);
+                }
             }
         }
         else
@@ -182,8 +183,9 @@ struct pycall_t
                     err_ += "value returned is not ";
                     err_ += pyret_.return_type();
                 }
-                if (pyret_.need_release())
+                if (pyret_.need_release()){
                     Py_DECREF(pValue);
+                }
             }
         }
         else
@@ -333,8 +335,8 @@ struct pyclass_base_info_t
         static PyObject *release(PyTypeObject *type, PyObject *args)
     {
         obj_data_t *self = (obj_data_t *)type;
-                self->release();
-                Py_RETURN_TRUE;
+        self->release();
+        return Py_BuildValue("i", 1);
     }
     static static_pytype_info_t pytype_info;
 };

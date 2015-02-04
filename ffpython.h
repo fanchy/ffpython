@@ -247,8 +247,9 @@ struct pycall_t
                     err_ += pyret_.return_type();
                     err_ += string(" ") + func_name_  + " in " + mod_name_;
                 }
-                if (pyret_.need_release())
+                if (pyret_.need_release()){
                     Py_DECREF(pValue);
+                }
             }
         }
         else
@@ -429,8 +430,8 @@ struct pyclass_base_info_t
         static PyObject *release(PyTypeObject *type, PyObject *args)
     {
         obj_data_t *self = (obj_data_t *)type;
-                self->release();
-                Py_RETURN_TRUE;
+        self->release();
+        return Py_BuildValue("i", 1);
     }
     static static_pytype_info_t pytype_info;
 };
@@ -1269,9 +1270,9 @@ private:
             m_all_pyclass[i].static_pytype_info->pytype_def = &m_all_pyclass[i].pytype_def;
             cpp_to_pyclass_reg_info_t::add(m_all_pyclass[i].class_name, m_all_pyclass[i].inherit_name, &m_all_pyclass[i].pytype_def);
 
-            if (PyType_Ready(&m_all_pyclass[i].pytype_def) < 0)
+            if (PyType_Ready(&(m_all_pyclass[i].pytype_def)) < 0)
                 return -1;
-            Py_INCREF(&m_all_pyclass[i].pytype_def);
+            Py_INCREF((PyObject*)&(m_all_pyclass[i].pytype_def));
             PyModule_AddObject(m, m_all_pyclass[i].class_real_name.c_str(), (PyObject *)&m_all_pyclass[i].pytype_def);
 
             stringstream str_def_args;

@@ -391,9 +391,9 @@ int ffpython_t::init_pyclass(PyObject* m)
         m_all_pyclass[i].static_pytype_info->pytype_def = &m_all_pyclass[i].pytype_def;
         cpp_to_pyclass_reg_info_t::add(m_all_pyclass[i].class_name, m_all_pyclass[i].inherit_name, &m_all_pyclass[i].pytype_def);
 
-        if (PyType_Ready(&m_all_pyclass[i].pytype_def) < 0)
+        if (PyType_Ready(&(m_all_pyclass[i].pytype_def)) < 0)
             return -1;
-        Py_INCREF(&m_all_pyclass[i].pytype_def);
+        Py_INCREF((PyObject*)&(m_all_pyclass[i].pytype_def));
         PyModule_AddObject(m, m_all_pyclass[i].class_real_name.c_str(), (PyObject *)&m_all_pyclass[i].pytype_def);
 
         stringstream str_def_args;
