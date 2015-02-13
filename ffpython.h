@@ -460,7 +460,7 @@ struct pyclass_member_func_gen_t
     static PyObject *getter_func(obj_data_t *self, void *closure)
     {
         property_ptr_t property_ptr;
-        ::memcpy(&property_ptr, &closure, sizeof(closure));
+        ::memcpy((void*)&property_ptr, (const void*)&closure, sizeof(closure));
         NULL_PTR_GUARD(self->obj);
         CLASS_TYPE* p = self->obj;
         return pytype_traits_t<RET>::pyobj_from_cppobj(p->*property_ptr);
@@ -468,7 +468,7 @@ struct pyclass_member_func_gen_t
     static int setter_func(obj_data_t *self, PyObject *value, void *closure)
     {
         property_ptr_t property_ptr;
-        ::memcpy(&property_ptr, &closure, sizeof(closure));
+        ::memcpy((void*)&property_ptr, (const void*)&closure, sizeof(closure));
         CLASS_TYPE* p = self->obj;
 
         return pytype_traits_t<RET>::pyobj_to_cppobj(value, p->*property_ptr);
@@ -541,7 +541,7 @@ public:
         tmp.func      = (PyCFunction)pyclass_method_gen_t<FUNC>::pymethod;
         tmp.args_num = pyclass_method_gen_t<FUNC>::args_num();
         tmp.option_args_num = pyclass_method_gen_t<FUNC>::option_args_num();
-        ::memcpy(&tmp.func_addr, &f_, sizeof(f_));
+        ::memcpy((void*)&tmp.func_addr, (const void*)&f_, sizeof(f_));
         methods_info.push_back(tmp);
         return *this;
     }
@@ -549,7 +549,7 @@ public:
     pyclass_regigster_tool_t& reg_property(RET CLASS_TYPE::* member_, const string& member_name_, string doc_ = "")
     {
         property_info_t tmp;
-        ::memcpy(&tmp.ptr, &member_, sizeof(member_));
+        ::memcpy((void*)&tmp.ptr, (const void*)&member_, sizeof(member_));
         tmp.property_name = member_name_;
         tmp.doc = doc_;
         tmp.getter_func = (getter)pyclass_member_func_gen_t<CLASS_TYPE, RET>::getter_func;
@@ -1271,7 +1271,7 @@ private:
             m_all_pyclass[i].static_pytype_info->pytype_def = &m_all_pyclass[i].pytype_def;
             cpp_to_pyclass_reg_info_t::add(m_all_pyclass[i].class_name, m_all_pyclass[i].inherit_name, &m_all_pyclass[i].pytype_def);
 
-            if (PyType_Ready(&(m_all_pyclass[i].pytype_def)) < 0)
+            if (PyType_Ready((PyTypeObject *)(&(m_all_pyclass[i].pytype_def))) < 0)
                 return -1;
             Py_INCREF((PyObject*)&(m_all_pyclass[i].pytype_def));
             PyModule_AddObject(m, m_all_pyclass[i].class_real_name.c_str(), (PyObject *)&m_all_pyclass[i].pytype_def);
@@ -1596,7 +1596,7 @@ struct pytype_traits_t<const T*>
             PyObject *palloc = pyclass_base_info_t<T>::alloc_obj(pyclass_base_info_t<T>::pytype_info.pytype_def, NULL, NULL);
             typename pyclass_base_info_t<T>::obj_data_t* pdest_obj = (typename pyclass_base_info_t<T>::obj_data_t*)palloc;
             //pdest_obj->obj = val_;
-            ::memcpy(&pdest_obj->obj, &val_, sizeof(pdest_obj->obj));
+            ::memcpy((void*)&pdest_obj->obj, (const void*)&val_, sizeof(pdest_obj->obj));
             pdest_obj->disable_auto_release();
             PyTuple_SetItem(pArgs, pyclass_base_info_t<T>::pytype_info.total_args_num, palloc);
             pValue = PyObject_CallObject(pyclass, pArgs);
@@ -1704,9 +1704,9 @@ struct pytype_traits_t<bool>
     {
         if (val_)
         {
-            Py_RETURN_TRUE;
+            return Py_BuildValue("i", 1);
         }
-        Py_RETURN_FALSE;
+        return Py_BuildValue("i", 0);
     }
     static int pyobj_to_cppobj(PyObject *pvalue_, bool& m_ret)
     {
@@ -2212,7 +2212,7 @@ struct pyext_tool_t
     template<typename T>
     pyext_tool_t& parse_arg(T& ret_arg_)
     {
-        typedef typename type_ref_traits_t<T>::value_t value_t;
+        //typedef typename type_ref_traits_t<T>::value_t value_t;
         if (false == m_err)
         {
             if (m_index >= m_size)
@@ -2246,7 +2246,7 @@ struct pyext_tool_t
     FUNC get_func_ptr() const 
     {
         FUNC f = NULL;
-        ::memcpy(&f, &m_func_addr, sizeof(m_func_addr));
+        ::memcpy((void*)&f, (const void*)&m_func_addr, sizeof(m_func_addr));
         return f;
     }
     PyObject* m_args;

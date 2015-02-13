@@ -65,7 +65,7 @@ struct pyext_tool_t
     FUNC get_func_ptr() const 
     {
         FUNC f = NULL;
-        ::memcpy(&f, &m_func_addr, sizeof(m_func_addr));
+        ::memcpy((void*)&f, (const void*)&m_func_addr, sizeof(m_func_addr));
         return f;
     }
     PyObject* m_args;
