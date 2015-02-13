@@ -33,9 +33,9 @@ void test_return_stl(ffpython_t& ffpython)
     ret_t val = ffpython.call<ret_t>("fftest", "test_return_stl");
 }
 
-static int print_val(int a1, float a2, const string& a3, const vector<double>& a4)
+static int print_val(int a1, int a2, const string& a3, const vector<double>& a4)
 {
-    printf("%s[%d,%f,%s,%d]\n", __FUNCTION__, a1, a2, a3.c_str(), a4.size());
+    //printf("%s[%d,%f,%s,%d]\n", __FUNCTION__, a1, a2, a3.c_str(), a4.size());
     return 0;
 }
 struct ops_t
@@ -137,8 +137,8 @@ void test_cpp_obj_py_obj(ffpython_t& ffpython)
 {
     dumy_t tmp_foo(2013);
     
-    foo_t* p = ffpython.call<foo_t*>("fftest", "test_cpp_obj_py_obj", &tmp_foo);
-    p = NULL;
+    //foo_t* p = ffpython.call<foo_t*>("fftest", "test_cpp_obj_py_obj", &tmp_foo);
+    //p = NULL;
 }
 
 void test_py_class_lambda(ffpython_t& ffpython)

@@ -393,7 +393,8 @@ int ffpython_t::init_pyclass(PyObject* m)
 
         if (PyType_Ready(&(m_all_pyclass[i].pytype_def)) < 0)
             return -1;
-        Py_INCREF((PyObject*)&(m_all_pyclass[i].pytype_def));
+        PyObject* tmpP = (PyObject*)(&(m_all_pyclass[i].pytype_def));
+        Py_INCREF(tmpP);
         PyModule_AddObject(m, m_all_pyclass[i].class_real_name.c_str(), (PyObject *)&m_all_pyclass[i].pytype_def);
 
         stringstream str_def_args;

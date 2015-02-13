@@ -541,7 +541,8 @@ public:
         tmp.func      = (PyCFunction)pyclass_method_gen_t<FUNC>::pymethod;
         tmp.args_num = pyclass_method_gen_t<FUNC>::args_num();
         tmp.option_args_num = pyclass_method_gen_t<FUNC>::option_args_num();
-        ::memcpy((void*)&tmp.func_addr, (const void*)&f_, sizeof(f_));
+
+        ::memcpy((void*)&tmp.func_addr, (const void*)&f_, sizeof(void*));
         methods_info.push_back(tmp);
         return *this;
     }
@@ -1273,7 +1274,8 @@ private:
 
             if (PyType_Ready((PyTypeObject *)(&(m_all_pyclass[i].pytype_def))) < 0)
                 return -1;
-            Py_INCREF((PyObject*)&(m_all_pyclass[i].pytype_def));
+            PyObject* tmpP = (PyObject*)(&(m_all_pyclass[i].pytype_def));
+            Py_INCREF(tmpP);
             PyModule_AddObject(m, m_all_pyclass[i].class_real_name.c_str(), (PyObject *)&m_all_pyclass[i].pytype_def);
 
             stringstream str_def_args;

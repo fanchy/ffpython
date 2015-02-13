@@ -445,7 +445,7 @@ public:
         tmp.func      = (PyCFunction)pyclass_method_gen_t<FUNC>::pymethod;
         tmp.args_num = pyclass_method_gen_t<FUNC>::args_num();
         tmp.option_args_num = pyclass_method_gen_t<FUNC>::option_args_num();
-        ::memcpy((void*)&tmp.func_addr, (const void*)&f_, sizeof(f_));
+        ::memcpy((void*)&tmp.func_addr, (const void*)&f_, sizeof(void*));
         methods_info.push_back(tmp);
         return *this;
     }
