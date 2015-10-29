@@ -1602,6 +1602,7 @@ struct pytype_traits_t<const T*>
             pdest_obj->disable_auto_release();
             PyTuple_SetItem(pArgs, pyclass_base_info_t<T>::pytype_info.total_args_num, palloc);
             pValue = PyObject_CallObject(pyclass, pArgs);
+            Py_XDECREF(pArgs);
         }
 
         Py_XDECREF(pyclass);
