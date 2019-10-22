@@ -39,33 +39,7 @@ Only one implement c++ header file.
 	typedef map<string, list<vector<int> > > ret_t;
     ret_t val = ffpython.call<ret_t>("fftest", "test_return_stl");
 ```
-## Extend Python
-### register c++ static function, all base type supported. Arg num can be nine.
-``` c++
-static int print_val(int a1, float a2, const string& a3, const vector<double>& a4)
-{
-    printf("%s[%d,%f,%s,%d]\n", __FUNCTION__, a1, a2, a3.c_str(), a4.size());
-    return 0;
-}
-struct ops_t
-{
-    static list<int> return_stl()
-    {
-        list<int> ret;ret.push_back(1024);
-        printf("%s\n", __FUNCTION__);
-        return ret;
-    }
-};
 
-void test_reg_function()
-{
-    ffpython_t ffpython;//("ext1");
-    ffpython.reg(&print_val, "print_val")
-            .reg(&ops_t::return_stl, "return_stl");
-    ffpython.init("ext1");
-    ffpython.call<void>("fftest", "test_reg_function");
-}
-```
 ### register c++ class, python can use it just like builtin types.
 ``` c++
 
@@ -113,22 +87,7 @@ static foo_t* obj_test(dumy_t* p)
     return p;
 }
 
-void test_register_base_class(ffpython_t& ffpython)
-{
-	ffpython.reg_class<foo_t, PYCTOR(int)>("foo_t")
-			.reg(&foo_t::get_value, "get_value")
-			.reg(&foo_t::set_value, "set_value")
-			.reg(&foo_t::test_stl, "test_stl")
-            .reg_property(&foo_t::m_value, "m_value");
 
-    ffpython.reg_class<dumy_t, PYCTOR(int)>("dumy_t", "dumy_t class inherit foo_t ctor <int>", "foo_t")
-        .reg(&dumy_t::dump, "dump");
-
-    ffpython.reg(obj_test, "obj_test");
-
-    ffpython.init("ext2");
-    ffpython.call<void>("fftest", "test_register_base_class");
-};
 ```
 ### Register c++ class which inherit a class having been registered.
 ``` c++	
@@ -147,6 +106,43 @@ void test_cpp_obj_py_obj(ffpython_t& ffpython)
     
     foo_t* p = ffpython.call<foo_t*>("fftest", "test_cpp_obj_py_obj", &tmp_foo);
 }
+```
+## Extend Python
+### register c++ static function, all base type supported. Arg num can be nine.
+``` c++
+static int print_val(int a1, float a2, const string& a3, const vector<double>& a4)
+{
+    printf("%s[%d,%f,%s,%d]\n", __FUNCTION__, a1, a2, a3.c_str(), a4.size());
+    return 0;
+}
+struct ops_t
+{
+    static list<int> return_stl()
+    {
+        list<int> ret;ret.push_back(1024);
+        printf("%s\n", __FUNCTION__);
+        return ret;
+    }
+};
+
+std::string test_reg_function(ffpython_t& ffpython)
+{
+    ffpython.reg(&print_val, "print_val")
+            .reg(&ops_t::return_stl, "return_stl");
+
+	ffpython.reg_class<foo_t, PYCTOR(int)>("foo_t")
+		.reg(&foo_t::get_value, "get_value")
+		.reg(&foo_t::set_value, "set_value")
+		.reg(&foo_t::test_stl, "test_stl")
+		.reg_property(&foo_t::m_value, "m_value");
+
+	ffpython.reg_class<dumy_t, PYCTOR(int)>("dumy_t", "dumy_t class inherit foo_t ctor <int>", "foo_t")
+		.reg(&dumy_t::dump, "dump");
+
+	ffpython.reg(obj_test, "obj_test");
+	return "cppext";
+}
+
 ```
 ## Python test script
 ``` python
