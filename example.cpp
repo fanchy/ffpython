@@ -5,7 +5,7 @@
 
 #include "ffpython.h"
 
-#define  TestGuard(X, Y) printf("-------%s begin-----------\n", X);try {Y;}catch(exception& e_){printf("exception<%s>\n", e_.what());}\
+#define  TestGuard(X, Y) printf("-------%s begin-----------\n", X);try {Y;}catch(std::exception& e_){printf("exception<%s>\n", e_.what());}\
         printf("-------%s end-----------\n", X);
 
 void test_base(ffpython_t& ffpython)

@@ -11,7 +11,7 @@
 #include <structmember.h>
 
 #include <string>
-using namespace std;
+
 
 #include "pyops_base.h"
 #include "pyops_for_embed.h"
@@ -73,7 +73,7 @@ public:
     pyclass_regigster_tool_t& reg_class(const std::string& class_name_, std::string doc_ = "", std::string inherit_name_ = "")
     {
         if (pyclass_base_info_t<T>::pytype_info.class_name.empty() == false)
-            throw runtime_error("this type has been registed");
+            throw std::runtime_error("this type has been registed");
 
         pyclass_base_info_t<T>::pytype_info.class_name = class_name_;
         //pyclass_base_info_t<T>::pytype_info.mod_name   = m_mod_name;
@@ -376,7 +376,7 @@ public:
         if (NULL == pModule)
         {
             pyops_t::traceback(err_msg);
-            throw runtime_error(err_msg.c_str());
+            throw std::runtime_error(err_msg.c_str());
         }
 
         pytype_tool_impl_t<RET_V> pyret;
@@ -386,13 +386,13 @@ public:
         if (!pvalue)
         {
             pyops_t::traceback(err_msg);
-            throw runtime_error(err_msg.c_str());
+            throw std::runtime_error(err_msg.c_str());
         }
 
         if (pyret.parse_value(pvalue))
         {
             Py_XDECREF(pvalue);
-            throw runtime_error("type invalid");
+            throw std::runtime_error("type invalid");
         }
         Py_XDECREF(pvalue);
         return pyret.get_value();
@@ -410,7 +410,7 @@ public:
         if (NULL == pModule)
         {
             pyops_t::traceback(err_msg);
-            throw runtime_error(err_msg.c_str());
+            throw std::runtime_error(err_msg.c_str());
         }
 
         PyObject* pval = pytype_traits_t<T>::pyobj_from_cppobj(val_);
@@ -426,7 +426,7 @@ public:
         std::string err_msg;
         if (NULL == pModule)
         {
-            throw runtime_error("getattr object ptr null");
+            throw std::runtime_error("getattr object ptr null");
         }
 
         pytype_tool_impl_t<RET_V> pyret;
@@ -435,13 +435,13 @@ public:
         if (!pvalue)
         {
             pyops_t::traceback(err_msg);
-            throw runtime_error(err_msg.c_str());
+            throw std::runtime_error(err_msg.c_str());
         }
 
         if (pyret.parse_value(pvalue))
         {
             Py_XDECREF(pvalue);
-            throw runtime_error("type invalid");
+            throw std::runtime_error("type invalid");
         }
         Py_XDECREF(pvalue);
         return pyret.get_value();

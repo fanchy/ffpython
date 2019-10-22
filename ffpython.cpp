@@ -157,7 +157,7 @@ int ffpython_t::reload(const std::string& py_name_)
     if (NULL == pModule)
     {
         pyops_t::traceback(err_msg);
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
         return -1;
     }
 
@@ -166,7 +166,7 @@ int ffpython_t::reload(const std::string& py_name_)
     if (NULL == pNewMod)
     {
         pyops_t::traceback(err_msg);
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
         return -1;
     }
     Py_DECREF(pNewMod);   
@@ -183,7 +183,7 @@ int ffpython_t::load(const std::string& py_name_)
     if (NULL == pModule)
     {
         pyops_t::traceback(err_msg);
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
         return -1;
     }
 
@@ -257,7 +257,7 @@ void ffpython_t::rename_method()
         std::string pystr_args_only_name;
         for (int j = 0; j < m_func_info[i].args_num; ++j)
         {
-            stringstream ss;
+            std::stringstream ss;
             if (pystr_args.empty())
             {
                 ss << "a" << (j+1);
@@ -272,7 +272,7 @@ void ffpython_t::rename_method()
         pystr_args_only_name = pystr_args;
         for (int j = 0; j < m_func_info[i].option_args_num; ++j)
         {
-            stringstream ss;
+            std::stringstream ss;
             if (pystr_args.empty())
             {
                 ss << "a" << (m_func_info[i].args_num + j+1);
@@ -291,7 +291,7 @@ void ffpython_t::rename_method()
         if (!pystr_args_only_name.empty())
             pystr_args_only_name += ",";
 
-		std::ostringstream oss;//创建一个流
+		std::stringstream oss;//创建一个流
 		oss << m_func_info[i].func_addr;//把值传递如流中
 		std::string funcAddrStr = oss.str();//获取转换后的字符转并将其写入result
 
@@ -435,8 +435,8 @@ void ffpython_t::rename_pyclass()
 {
 	for (size_t i = 0; i < m_all_pyclass.size(); ++i)
 	{
-		stringstream str_def_args;
-		stringstream str_init_args;
+		std::stringstream str_def_args;
+		std::stringstream str_init_args;
 		for (int a = 0; a < m_all_pyclass[i].args_num; ++a)
 		{
 			str_def_args << "a" << (a + 1) << ",";
@@ -510,7 +510,7 @@ void ffpython_t::rename_pyclass()
 			std::string pystr_args_only_name;
 			for (int j = 0; j < m_all_pyclass[i].methods_info[m].args_num; ++j)
 			{
-				stringstream ss;
+				std::stringstream ss;
 				if (pystr_args.empty())
 				{
 					ss << "a" << (j + 1);
@@ -525,7 +525,7 @@ void ffpython_t::rename_pyclass()
 			pystr_args_only_name = pystr_args;
 			for (int j = 0; j < m_all_pyclass[i].methods_info[m].option_args_num; ++j)
 			{
-				stringstream ss;
+				std::stringstream ss;
 				if (pystr_args.empty())
 				{
 					ss << "a" << (m_all_pyclass[i].methods_info[m].args_num + j + 1);
@@ -544,7 +544,7 @@ void ffpython_t::rename_pyclass()
 			if (!pystr_args_only_name.empty())
 				pystr_args_only_name += ",";
 
-			std::ostringstream oss;//创建一个流
+			std::stringstream oss;//创建一个流
 			oss << m_all_pyclass[i].methods_info[m].func_addr;//把值传递如流中
 			std::string funcAddrStr = oss.str();//获取转换后的字符转并将其写入result
 

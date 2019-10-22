@@ -36,7 +36,7 @@ struct pyext_tool_t
         {
             if (m_index >= m_size)
             {
-                stringstream ss;
+                std::stringstream ss;
                 ss << "param num invalid, only["<< m_index + 1 <<"] provided";
                 PyErr_SetString(PyExc_TypeError, ss.str().c_str());
                 m_err = true;
@@ -46,7 +46,7 @@ struct pyext_tool_t
             pytype_tool_impl_t<T> ret_tool;
             if (ret_tool.parse_value(PyTuple_GetItem(m_arg_tuple, m_index)))
             {
-                stringstream ss;
+                std::stringstream ss;
                 ss << "param[" << m_index + 1 << "] type invalid, "<< pytype_traits_t<T>::get_typename() << " needed";
                 PyErr_SetString(PyExc_TypeError, ss.str().c_str());
                 m_err = true;

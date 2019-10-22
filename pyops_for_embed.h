@@ -19,7 +19,7 @@ const T& pycall_t::call(const std::string& mod_name_, const std::string& func_na
     if (NULL == pModule)
     {
         pyops_t::traceback(err_msg);
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
         return pyret.get_value();
     }
 
@@ -28,7 +28,7 @@ const T& pycall_t::call(const std::string& mod_name_, const std::string& func_na
 
     if (!err_msg.empty())
     {
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
     }
     return pyret.get_value();
 }
@@ -39,7 +39,7 @@ const T& pycall_t::call_obj_method(PyObject *pObj, const std::string& func_name_
     if (NULL == pObj)
     {
         pyops_t::traceback(err_msg);
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
         return pyret.get_value();
     }
 
@@ -48,7 +48,7 @@ const T& pycall_t::call_obj_method(PyObject *pObj, const std::string& func_name_
 
     if (!err_msg.empty())
     {
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
     }
     return pyret.get_value();
 }
@@ -60,7 +60,7 @@ const T& pycall_t::call_lambda(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_too
     if (NULL == pFunc)
     {
         err_msg = "can not call null PyObject";
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
         return pyret.get_value();
     }
 
@@ -68,7 +68,7 @@ const T& pycall_t::call_lambda(PyObject *pFunc, pycall_arg_t& pyarg_, pytype_too
 
     if (!err_msg.empty())
     {
-        throw runtime_error(err_msg.c_str());
+        throw std::runtime_error(err_msg.c_str());
     }
     return pyret.get_value();
 }
