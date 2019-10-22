@@ -15,14 +15,15 @@ def test_return_stl():
 	return ret
 
 def test_reg_function():
-	import ext1
-	ext1.print_val(123, 45.6 , "----789---", [3.14])
-	ret = ext1.return_stl()
+	import cppext
+	cppext.print_val(123, 45.6 , "----789---", [3.14])
+	ret = cppext.return_stl()
 	print('test_reg_function', ret)
 
 def test_register_base_class():
-	import ext2
-	foo = ext2.foo_t(20130426)
+	import cppext
+	foo = cppext.foo_t(20130426)
+    
 	print("test_register_base_class get_val:", foo.get_value())
 	foo.set_value(778899)
 	print("test_register_base_class get_val:", foo.get_value(), foo.m_value)
@@ -30,8 +31,8 @@ def test_register_base_class():
 	print('test_register_base_class test_register_base_class', foo)
 
 def test_register_inherit_class():
-	import ext2
-	dumy = ext2.dumy_t(20130426)
+	import cppext
+	dumy = cppext.dumy_t(20130426)
 	print("test_register_inherit_class get_val:", dumy.get_value())
 	dumy.set_value(778899)
 	print("test_register_inherit_class get_val:", dumy.get_value(), dumy.m_value)
@@ -45,7 +46,7 @@ def test_cpp_obj_to_py_ext(foo):
 		print('test_cpp_obj_to_py_ext', k, foo[k].m_value)
 	
 def test_cpp_obj_to_py(foo):
-	import ext2
+	import cppext
 	print("test_cpp_obj_to_py get_val:", foo.get_value())
 	foo.set_value(778899)
 	print("test_cpp_obj_to_py get_val:", foo.get_value(), foo.m_value)
@@ -54,13 +55,13 @@ def test_cpp_obj_to_py(foo):
 	print('test_cpp_obj_to_py test_register_base_class', foo)
 
 def test_cpp_obj_py_obj(dumy):
-	import ext2
+	import cppext
 	print("test_cpp_obj_py_obj get_val:", dumy.get_value())
 	dumy.set_value(778899)
 	print("test_cpp_obj_py_obj get_val:", dumy.get_value(), dumy.m_value)
 	dumy.test_stl({"key": [11,22,33] })
 	dumy.dump()
-	ext2.obj_test(dumy)
+	cppext.obj_test(dumy)
 	print('test_cpp_obj_py_obj', dumy)
 	
 	return dumy
