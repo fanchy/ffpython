@@ -1,4 +1,5 @@
 # ffpython
+## default use python3 ,  python2 use files in python2.7
 
 ffpython is a c++ lib,which is to simplify task that embed python and extend python. 
 For example, call python function, register c++ function to python, register c++ class to python. 
@@ -13,9 +14,8 @@ Only one implement c++ header file.
  * when python exception throw, ffpython will wrap it as a std exception which includes python traceback info.
 
 ## Supported Python versions
- * python2.5 python2.6 python2.7, win / linux
- * python3.x is being developed, but unfortunately， python3.x api is so different to python2.x, even diffent between python3.2
-	and python3.3, Headache!!
+ * python2.5 python2.6 python2.7  python3, win / linux
+
 
 ## Embed Python script in C++
 ### Get / Set varialbe in  python script/module
