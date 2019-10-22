@@ -3,10 +3,10 @@
 
 #ifdef _DEBUG
 #undef _DEBUG
-#include <python.h>
+#include <Python.h>
 #define _DEBUG
 #else
-#include <python.h>
+#include <Python.h>
 #endif
 #include <structmember.h>
 
