@@ -7,80 +7,81 @@
 
 #define  TestGuard(X, Y) printf("-------%s begin-----------\n", X);try {Y;}catch(std::exception& e_){printf("exception<%s>\n", e_.what());}\
         printf("-------%s end-----------\n", X);
+using namespace ff;
 
-void test_base(ffpython_t& ffpython)
+void testBase(FFPython& ffpython)
 {
-    printf("sys.version=%s\n", ffpython.get_global_var<std::string>("sys", "version").c_str());
-    ffpython.set_global_var("fftest", "global_var", "OhNice");
-    printf("fftest.global_var=%s\n", ffpython.get_global_var<std::string>("fftest", "global_var").c_str());
+    printf("sys.version=%s\n", ffpython.getVar<std::string>("sys", "version").c_str());
+    ffpython.setVar("fftest", "global_var", "OhNice");
+    printf("fftest.global_var=%s\n", ffpython.getVar<std::string>("fftest", "global_var").c_str());
 	printf("os.getcwd=%s\n", ffpython.call<std::string>("os", "getcwd").c_str());
     printf("time.asctime=%s\n", ffpython.call<std::string>("time", "asctime").c_str());
     int a1 = 100; float a2 = 3.14f; std::string a3 = "OhWell";
-    ffpython.call<void>("fftest", "test_base", a1, a2, a3);
+    ffpython.call<void>("fftest", "testBase", a1, a2, a3);
 }
 
-void test_stl(ffpython_t& ffpython)
+void testStl(FFPython& ffpython)
 {
     std::vector<int> a1;a1.push_back(100);a1.push_back(200);
     std::list<std::string> a2; a2.push_back("Oh");a2.push_back("Nice");
     std::vector<std::list<std::string> > a3;a3.push_back(a2);
     
-    ffpython.call<bool>("fftest", "test_stl", a1, a2, a3);
+    ffpython.call<bool>("fftest", "testStl", a1, a2, a3);
 
 }
-void test_return_stl(ffpython_t& ffpython)
+void test_returnStl(FFPython& ffpython)
 {
-    typedef std::map<std::string, std::list<std::vector<int> > > ret_t;
-    ret_t val = ffpython.call<ret_t>("fftest", "test_return_stl");
+    //typedef std::map<std::string, std::list<std::vector<int> > > ret_t;
+    //ret_t val = ffpython.call<ret_t>("fftest", "test_returnStl");
 }
 
-static int print_val(int a1, float a2, const std::string& a3, const std::vector<double>& a4)
+static int printVal(int a1, float a2, const std::string& a3, const std::vector<double>& a4)
 {
     printf("%s[%d,%g,%s,%d]\n", __FUNCTION__, a1, a2, a3.c_str(), (int)a4.size());
     return 0;
 }
-struct ops_t
+struct OpsTest
 {
-    static std::list<int> return_stl()
+    static std::list<int> returnStl()
     {
         std::list<int> ret;ret.push_back(1024);
         printf("%s\n", __FUNCTION__);
         return ret;
     }
 };
-void test_register_base_class(ffpython_t& ffpython)
+void testRegisterBaseClass(FFPython& ffpython)
 {
-	ffpython.call<void>("fftest", "test_register_base_class");
+	ffpython.call<void>("fftest", "testRegisterBaseClass");
 };
 
-class foo_t
+class Foo
 {
 public:
-	foo_t(int v_) :m_value(v_)
+	Foo(int v_) :nValue(v_)
 	{
 		printf("%s\n", __FUNCTION__);
 	}
-	virtual ~foo_t()
+	virtual ~Foo()
 	{
 		printf("%s\n", __FUNCTION__);
 	}
-	int get_value() const { return m_value; }
-	void set_value(int v_) { m_value = v_; }
-	void test_stl(std::map<std::string, std::list<int> >& v_)
+	int getValue()  { return nValue; }
+	void setValue(int v_) { nValue = v_; }
+	void testStl(std::map<std::string, std::list<int> >& v_)
 	{
 		printf("%s\n", __FUNCTION__);
 	}
-	int m_value;
+	int nValue;
 };
 
-class dumy_t : public foo_t
+class Dumy : public Foo
 {
 public:
-	dumy_t(int v_) :foo_t(v_)
+	Dumy(int v_) :Foo(v_)
 	{
 		printf("%s\n", __FUNCTION__);
 	}
-	~dumy_t()
+	~Dumy()
 	{
 		printf("%s\n", __FUNCTION__);
 	}
@@ -91,93 +92,90 @@ public:
 };
 
 
-static foo_t* obj_test(dumy_t* p)
+static Foo* objTest(Dumy* p)
 {
 	printf("%s\n", __FUNCTION__);
 	return p;
 }
 
-std::string test_reg_function(ffpython_t& ffpython)
+std::string testRegFunction(FFPython& ffpython)
 {
-    ffpython.reg(&print_val, "print_val")
-            .reg(&ops_t::return_stl, "return_stl");
+    ffpython.regFunc(&printVal, "printVal")
+            .regFunc(&OpsTest::returnStl, "returnStl");
 
-	ffpython.reg_class<foo_t, PYCTOR(int)>("foo_t")
-		.reg(&foo_t::get_value, "get_value")
-		.reg(&foo_t::set_value, "set_value")
-		.reg(&foo_t::test_stl, "test_stl")
-		.reg_property(&foo_t::m_value, "m_value");
+	ffpython.regClass<Foo(int)>("Foo")
+		.regMethod(&Foo::getValue, "getValue")
+		.regMethod(&Foo::setValue, "setValue")
+		.regMethod(&Foo::testStl, "testStl")
+		.regField(&Foo::nValue, "nValue");
 
-	ffpython.reg_class<dumy_t, PYCTOR(int)>("dumy_t", "dumy_t class inherit foo_t ctor <int>", "foo_t")
-		.reg(&dumy_t::dump, "dump");
+	ffpython.regClass<Dumy(int)>("Dumy", "Foo")
+		.regMethod(&Dumy::dump, "dump");
 
-	ffpython.reg(obj_test, "obj_test");
+	ffpython.regFunc(objTest, "objTest");
 	return "cppext";
 }
 
 
-void test_register_inherit_class(ffpython_t& ffpython)
+void testRegisterInheritClass(FFPython& ffpython)
 {
-    ffpython.call<void>("fftest", "test_register_inherit_class");
+    ffpython.call<void>("fftest", "testRegisterInheritClass");
 };
 
-void test_cpp_obj_to_py(ffpython_t& ffpython)
+void testCppObjToPy(FFPython& ffpython)
 {
-    foo_t tmp_foo(2013);
-	std::vector<foo_t*> vt;
+	Dumy tmp_foo(2013);
+	std::vector<Dumy*> vt;
 	vt.push_back(&tmp_foo);
-    ffpython.call<void>("fftest", "test_cpp_obj_to_py", &tmp_foo);
-	printf("test_cpp_obj_to_py changed m_value=%d\n", tmp_foo.m_value);
-	ffpython.call<void>("fftest", "test_cpp_obj_to_py_ext", vt);
+    ffpython.call<void>("fftest", "testCppObjToPy", &tmp_foo);
+	printf("testCppObjToPy changed nValue=%d\n", tmp_foo.nValue);
+	ffpython.call<void>("fftest", "testCppObjToPy2", vt);
 }
 
-void test_cpp_obj_py_obj(ffpython_t& ffpython)
-{
-    dumy_t tmp_foo(2013);
-    
-    //foo_t* p = ffpython.call<foo_t*>("fftest", "test_cpp_obj_py_obj", &tmp_foo);
-    //p = NULL;
-}
 
-void test_py_class_lambda(ffpython_t& ffpython)
+void testPyClassLambda(FFPython& ffpython)
 {
-    PyObject* pobj = ffpython.call<PyObject*>("fftest", "test_cpp_obj_return_py_obj");
-    ffpython.obj_call<void>(pobj, "sayHi", 1, std::string("soNice"));
-    
-    PyObject* pFunc= ffpython.call<PyObject*>("fftest", "test_cpp_obj_return_py_lambda");
-    ffpython.call_lambda<void>(pFunc, 112233);
-    
+    PyObject* pFunc= ffpython.call<PyObject*>("fftest", "testCppObjReturnPyLambda");
+	std::vector<PyObject*> args;
+	args.push_back(ScriptCppOps<int>::scriptFromCpp(1066));
+    ffpython.callFuncByObjRet<void>(pFunc, args);
     Py_XDECREF(pFunc);
-    Py_XDECREF(pobj);
+
+	PyObject* pobj = ffpython.call<PyObject*>("fftest", "testCppObjReturnPyObj");
+	Py_INCREF(pobj);
+	std::vector<PyObject*> args1;
+	args1.push_back(ScriptCppOps<int>::scriptFromCpp(1111));
+	args1.push_back(ScriptCppOps<std::string>::scriptFromCpp("soNice"));
+	ffpython.callMethodByObjRet<void>(pobj, "sayHi", args1);
+	Py_XDECREF(pobj);
+
 }
 
 int main(int argc, char* argv[])
 {
 	try {
 
-		ffpython_t ffpython(&test_reg_function);
-		ffpython_t::add_path("./");
-		ffpython_t::add_path("../");
+		FFPython ffpython;
+		testRegFunction(ffpython);
+		ffpython.addPath("./");
+		ffpython.addPath("../");
 
-		TestGuard("test_base", test_base(ffpython));
+		TestGuard("testBase", testBase(ffpython));
 
-		TestGuard("test_stl", test_stl(ffpython));
-		ffpython.call<void>("fftest", "test_reg_function");
+		TestGuard("testStl", testStl(ffpython));
+		ffpython.call<void>("fftest", "testRegFunction");
 
-		TestGuard("test_register_base_class", test_register_base_class(ffpython));
+		TestGuard("testRegisterBaseClass", testRegisterBaseClass(ffpython));
 
-		TestGuard("test_register_inherit_class", test_register_inherit_class(ffpython));
+		TestGuard("testRegisterInheritClass", testRegisterInheritClass(ffpython));
 		
-		TestGuard("test_cpp_obj_to_py", test_cpp_obj_to_py(ffpython));return 0;
+		TestGuard("testCppObjToPy", testCppObjToPy(ffpython));
 
-		TestGuard("test_cpp_obj_py_obj", test_cpp_obj_py_obj(ffpython));
-
-		TestGuard("test_py_class_lambda", test_py_class_lambda(ffpython));
+		TestGuard("testPyClassLambda", testPyClassLambda(ffpython));
 
 #ifdef _WIN32
 		system("pause");
 #endif
-		Py_Finalize();
 	}
 	catch(std::exception& e) {
 		printf("exception<%s>\n", e.what());

@@ -1,79 +1,81 @@
 
 
-def test_base(a1, a2, a3):
-	print('test_base', a1, a2, a3)
-	return 0
+def testBase(a1, a2, a3):
+    print('testBase', a1, a2, a3)
+    return 0
 
-def test_stl(a1, a2, a3):
-	print('test_stl', a1, a2, a3)
-	return True
+def testStl(a1, a2, a3):
+    print('testStl', a1, a2, a3)
+    return True
 
-def test_return_stl():
-	print('test_return_stl')
-	#map<string, list<vector<int> > >
-	ret = {'Oh':[[111,222], [333, 444] ] }
-	return ret
+def test_returnStl():
+    print('test_returnStl')
+    #map<string, list<vector<int> > >
+    ret = {'Oh':[[111,222], [333, 444] ] }
+    return ret
 
-def test_reg_function():
-	import cppext
-	cppext.print_val(123, 45.6 , "----789---", [3.14])
-	ret = cppext.return_stl()
-	print('test_reg_function', ret)
+def testRegFunction():
+    import ffpython
+    ffpython.printVal(123, 45.6 , "----789---", [3.14])
+    ret = ffpython.returnStl()
+    print('testRegFunction', ret)
 
-def test_register_base_class():
-	import cppext
-	foo = cppext.foo_t(20130426)
+def testRegisterBaseClass():
+    import ffpython
+    foo = ffpython.Foo(20130426)
     
-	print("test_register_base_class get_val:", foo.get_value())
-	foo.set_value(778899)
-	print("test_register_base_class get_val:", foo.get_value(), foo.m_value)
-	foo.test_stl({"key": [11,22,33] })
-	print('test_register_base_class test_register_base_class', foo)
+    print("testRegisterBaseClass get_val:", foo.getValue())
+    foo.setValue(778899)
+    print("testRegisterBaseClass get_val:", foo.getValue(), foo.nValue)
+    foo.testStl({"key": [11,22,33] })
+    print('testRegisterBaseClass testRegisterBaseClass', foo)
 
-def test_register_inherit_class():
-	import cppext
-	dumy = cppext.dumy_t(20130426)
-	print("test_register_inherit_class get_val:", dumy.get_value())
-	dumy.set_value(778899)
-	print("test_register_inherit_class get_val:", dumy.get_value(), dumy.m_value)
-	dumy.test_stl({"key": [11,22,33] })
-	dumy.dump()
-	print('test_register_inherit_class', dumy)
+def testRegisterInheritClass():
+    import ffpython
+    dumy = ffpython.Dumy(20130426)
+    print("testRegisterInheritClass get_val:", dumy.getValue())
+    dumy.setValue(778899)
+    print("testRegisterInheritClass get_val:", dumy.getValue(), dumy.nValue)
+    dumy.testStl({"key": [11,22,33] })
+    dumy.dump()
+    print('testRegisterInheritClass', dumy)
 
-def test_cpp_obj_to_py_ext(foo):
-	print('test_cpp_obj_to_py_ext', len(foo))
-	for k in range(0, len(foo)):
-		print('test_cpp_obj_to_py_ext', k, foo[k].m_value)
-	
-def test_cpp_obj_to_py(foo):
-	import cppext
-	print("test_cpp_obj_to_py get_val:", foo.get_value())
-	foo.set_value(778899)
-	print("test_cpp_obj_to_py get_val:", foo.get_value(), foo.m_value)
-	foo.test_stl({"key": [11,22,33] })
-	foo.m_value = 100
-	print('test_cpp_obj_to_py test_register_base_class', foo)
+def testCppObjToPy_ext(foo):
+    print('testCppObjToPy_ext', len(foo))
+    for k in range(0, len(foo)):
+        print('testCppObjToPy_ext', k, foo[k].nValue)
+    
+def testCppObjToPy(foo):
+    import ffpython
+    print("testCppObjToPy get_val:", foo.getValue())
+    foo.setValue(778899)
+    print("testCppObjToPy get_val:", foo.getValue(), foo.nValue)
+    foo.testStl({"key": [11,22,33] })
+    foo.nValue = 100
+    print('testCppObjToPy testRegisterBaseClass', foo)
 
-def test_cpp_obj_py_obj(dumy):
-	import cppext
-	print("test_cpp_obj_py_obj get_val:", dumy.get_value())
-	dumy.set_value(778899)
-	print("test_cpp_obj_py_obj get_val:", dumy.get_value(), dumy.m_value)
-	dumy.test_stl({"key": [11,22,33] })
-	dumy.dump()
-	cppext.obj_test(dumy)
-	print('test_cpp_obj_py_obj', dumy)
-	
-	return dumy
+def testCppObjToPy2(dumyList):
+    dumy = dumyList[0]
+    import ffpython
+    print("testCppObjToPy get_val:", dumy.getValue())
+    dumy.setValue(778899)
+    print("testCppObjToPy get_val:", dumy.getValue(), dumy.nValue)
+    dumy.testStl({"key": [11,22,33] })
+    dumy.dump()
+    ffpython.objTest(dumy)
+    print('testCppObjToPy', dumy)
+    
+    return dumy
 
-class pyclass_t:
+class PyClass:
     def __init__(self):
-        print('pyclass_t init....')
+        print('PyClass init....')
     def sayHi(self, a1, a2):
         print('sayHi..', a1, a2)
-def test_cpp_obj_return_py_obj():
-    return pyclass_t()
-def test_cpp_obj_return_py_lambda():
-    def test_lambda(a1):
-        print('test_lambda....', a1)
-    return test_lambda
+def testCppObjReturnPyObj():
+    import ffpython
+    return PyClass()
+def testCppObjReturnPyLambda():
+    def testLambda(a1):
+        print('testLambda....', a1)
+    return testLambda
