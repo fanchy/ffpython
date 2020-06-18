@@ -88,6 +88,14 @@ template<typename T>
 class ScriptMethodImpl;
 template<typename T>
 class ScriptFieldImpl;
+class ScriptRawImpl :public ScriptIterface {
+public:
+    typedef PyObject* (*FuncType)(std::vector<PyObject*>&); FuncType func;
+    ScriptRawImpl(FuncType f) :func(f) {}
+    virtual PyObject* handleRun() { 
+        return func(tmpArgs);
+    }
+};
 
 enum FFScriptTypeDef {
     E_STATIC_FUNC  = 0,
@@ -104,6 +112,8 @@ public:
 	~FFPython();
     void addPath(const std::string& path);
 	void runCode(const std::string& code);
+    bool reload(const std::string& pyMod);
+    bool load(const std::string& pyMod);
     
     FFPython& reg(ScriptIterface* pObj, const std::string& name, 
         int nOps, std::string nameClass = "", std::string nameInherit = "");
@@ -123,6 +133,9 @@ public:
     template<typename T>
     FFPython& regField(T func, const std::string& name) {
         return reg(new ScriptFieldImpl<T>(func), name, E_CLASS_FIELD);
+    }
+    FFPython& regFunc(ScriptRawImpl::FuncType func, const std::string& name) {
+        return reg(new ScriptRawImpl(func), name, E_STATIC_FUNC);
     }
 
     PyObject* callFuncByObj(PyObject* pFunc, std::vector<PyObject*>& objArgs);
@@ -375,14 +388,16 @@ public:
         return NULL;
     }
     int traceback(std::string& ret_);
+    void cacheObj(PyObject* b) { m_listArgs.push_back(b); }
 private:
     std::string                             m_strErr;
     std::vector<PyObject*>                  m_listArgs;
     static std::vector<ScriptIterface*>     m_regFuncs;
     std::string                             m_curRegClassName;
+    std::vector<PyObject*>                  m_listGlobalCache;
 public:
     static std::map<void*, ScriptIterface*> m_allocObjs;
-    static PyObject* pyobjBuildTmpObj;
+    static PyObject*                        pyobjBuildTmpObj;
 };
 template<>
 struct ScriptCppOps<int8_t> {
@@ -745,10 +760,10 @@ struct ScriptCppOps<std::map<T, R> >
         return true;
     }
 };
-template <typename T> struct RefTypeTraits { typedef T RealType; };
-template <typename T> struct RefTypeTraits<const T> { typedef T RealType; };
-template <typename T> struct RefTypeTraits<const T&> { typedef T RealType; };
-template <typename T> struct RefTypeTraits<T&> { typedef T RealType; };
+template <typename T> struct ScriptRefTraits { typedef T RealType; };
+template <typename T> struct ScriptRefTraits<const T> { typedef T RealType; };
+template <typename T> struct ScriptRefTraits<const T&> { typedef T RealType; };
+template <typename T> struct ScriptRefTraits<T&> { typedef T RealType; };
 //!带返回值函数开始
 template <typename RET >
 class ScriptFuncImpl<RET(*)()> : public ScriptIterface {
@@ -765,8 +780,8 @@ public:
     typedef RET(*FuncType)(ARG1); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(1), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1));
     }
 };
@@ -776,10 +791,10 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(2), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2));
     }
 };
@@ -789,12 +804,12 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2, ARG3); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(3), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2, arg3));
     }
 };
@@ -804,14 +819,14 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2, ARG3, ARG4); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(4), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2, arg3, arg4));
     }
 };
@@ -822,16 +837,16 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(5), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2, arg3, arg4, arg5));
     }
 };
@@ -842,18 +857,18 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(6), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2, arg3, arg4, arg5, arg6));
     }
 };
@@ -864,20 +879,20 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(7), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2, arg3, arg4, arg5, arg6, arg7));
     }
 };
@@ -888,22 +903,22 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(8), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));
     }
 };
@@ -914,24 +929,24 @@ public:
     typedef RET(*FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(9), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        typename RefTypeTraits<ARG9>::RealType arg9 = InitValueTrait<typename RefTypeTraits<ARG9>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
-        ScriptCppOps<typename RefTypeTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        typename ScriptRefTraits<ARG9>::RealType arg9 = InitValueTrait<typename ScriptRefTraits<ARG9>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        ScriptCppOps<typename ScriptRefTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
         return ScriptCppOps<RET>::scriptFromCpp(func(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9));
     }
 };
@@ -953,8 +968,8 @@ public:
     typedef void(*FuncType)(ARG1); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(1), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
         func(arg1);
         Py_RETURN_NONE;
     }
@@ -965,10 +980,10 @@ public:
     typedef void(*FuncType)(ARG1,ARG2); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(2), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
         func(arg1,arg2);
         Py_RETURN_NONE;
     }
@@ -979,12 +994,12 @@ public:
     typedef void(*FuncType)(ARG1,ARG2,ARG3); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(3), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
         func(arg1,arg2,arg3);
         Py_RETURN_NONE;
     }
@@ -995,14 +1010,14 @@ public:
     typedef void(*FuncType)(ARG1,ARG2,ARG3,ARG4); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(4), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
         func(arg1,arg2,arg3,arg4);
         Py_RETURN_NONE;
     }
@@ -1014,16 +1029,16 @@ public:
     typedef void(*FuncType)(ARG1,ARG2,ARG3,ARG4,ARG5); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(5), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
         func(arg1,arg2,arg3,arg4,arg5);
         Py_RETURN_NONE;
     }
@@ -1035,18 +1050,18 @@ public:
     typedef void(*FuncType)(ARG1,ARG2,ARG3,ARG4,ARG5,ARG6); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(6), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
         func(arg1,arg2,arg3,arg4,arg5,arg6);
         Py_RETURN_NONE;
     }
@@ -1058,20 +1073,20 @@ public:
     typedef void(*FuncType)(ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(7), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
         func(arg1,arg2,arg3,arg4,arg5,arg6,arg7);
         Py_RETURN_NONE;
     }
@@ -1083,22 +1098,22 @@ public:
     typedef void(*FuncType)(ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(8), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
         func(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8);
         Py_RETURN_NONE;
     }
@@ -1110,24 +1125,24 @@ public:
     typedef void(*FuncType)(ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8,ARG9); FuncType func;
     ScriptFuncImpl(FuncType f) :ScriptIterface(9), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        typename RefTypeTraits<ARG9>::RealType arg9 = InitValueTrait<typename RefTypeTraits<ARG9>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
-        ScriptCppOps<typename RefTypeTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        typename ScriptRefTraits<ARG9>::RealType arg9 = InitValueTrait<typename ScriptRefTraits<ARG9>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        ScriptCppOps<typename ScriptRefTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
         func(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
         Py_RETURN_NONE;
     }
@@ -1154,8 +1169,8 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(1) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
         return new CLASS_TYPE(arg1);
     }
     virtual void handleDel() {
@@ -1169,10 +1184,10 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(2) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
         return new CLASS_TYPE(arg1, arg2);
     }
     virtual void handleDel() {
@@ -1186,12 +1201,12 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(3) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
         return new CLASS_TYPE(arg1, arg2, arg3);
     }
     virtual void handleDel() {
@@ -1205,14 +1220,14 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(4) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
         return new CLASS_TYPE(arg1, arg2, arg3, arg4);
     }
     virtual void handleDel() {
@@ -1227,16 +1242,16 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(5) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
         return new CLASS_TYPE(arg1, arg2, arg3, arg4, arg5);
     }
     virtual void handleDel() {
@@ -1251,18 +1266,18 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(6) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
         return new CLASS_TYPE(arg1, arg2, arg3, arg4, arg5, arg6);
     }
     virtual void handleDel() {
@@ -1277,20 +1292,20 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(7) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
         return new CLASS_TYPE(arg1, arg2, arg3, arg4, arg5, arg6, arg7);
     }
     virtual void handleDel() {
@@ -1305,22 +1320,22 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(8) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
         return new CLASS_TYPE(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
     }
     virtual void handleDel() {
@@ -1335,24 +1350,24 @@ public:
     typedef CLASS_TYPE ClassTypeReal;
     ScriptClassImpl() :ScriptIterface(9) {}
     virtual void* handleNew() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        typename RefTypeTraits<ARG9>::RealType arg9 = InitValueTrait<typename RefTypeTraits<ARG9>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
-        ScriptCppOps<typename RefTypeTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        typename ScriptRefTraits<ARG9>::RealType arg9 = InitValueTrait<typename ScriptRefTraits<ARG9>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        ScriptCppOps<typename ScriptRefTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
         return new CLASS_TYPE(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
     }
     virtual void handleDel() {
@@ -1377,8 +1392,8 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(1), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1));
     }
@@ -1389,10 +1404,10 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(2), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2));
     }
@@ -1403,12 +1418,12 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(3), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3));
     }
@@ -1419,14 +1434,14 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(4), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4));
     }
@@ -1437,16 +1452,16 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(5), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5));
     }
@@ -1457,18 +1472,18 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(6), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6));
     }
@@ -1479,20 +1494,20 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(7), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6, arg7));
     }
@@ -1503,22 +1518,22 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(8), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));
     }
@@ -1529,24 +1544,24 @@ public:
     typedef RET(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(9), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        typename RefTypeTraits<ARG9>::RealType arg9 = InitValueTrait<typename RefTypeTraits<ARG9>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
-        ScriptCppOps<typename RefTypeTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        typename ScriptRefTraits<ARG9>::RealType arg9 = InitValueTrait<typename ScriptRefTraits<ARG9>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        ScriptCppOps<typename ScriptRefTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
 
         return ScriptCppOps<RET>::scriptFromCpp(((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9));
     }
@@ -1569,8 +1584,8 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(1), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1);
         Py_RETURN_NONE;
@@ -1582,10 +1597,10 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(2), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2);
         Py_RETURN_NONE;
@@ -1597,12 +1612,12 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(3), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3);
         Py_RETURN_NONE;
@@ -1614,14 +1629,14 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(4), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4);
         Py_RETURN_NONE;
@@ -1633,16 +1648,16 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(5), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5);
         Py_RETURN_NONE;
@@ -1654,18 +1669,18 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(6), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6);
         Py_RETURN_NONE;
@@ -1677,20 +1692,20 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(7), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6, arg7);
         Py_RETURN_NONE;
@@ -1702,22 +1717,22 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(8), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
         Py_RETURN_NONE;
@@ -1729,24 +1744,24 @@ public:
     typedef void(CLASS_TYPE::* FuncType)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9); FuncType func;
     ScriptMethodImpl(FuncType f) :ScriptIterface(9), func(f) {}
     virtual PyObject* handleRun() {
-        typename RefTypeTraits<ARG1>::RealType arg1 = InitValueTrait<typename RefTypeTraits<ARG1>::RealType>::value();
-        typename RefTypeTraits<ARG2>::RealType arg2 = InitValueTrait<typename RefTypeTraits<ARG2>::RealType>::value();
-        typename RefTypeTraits<ARG3>::RealType arg3 = InitValueTrait<typename RefTypeTraits<ARG3>::RealType>::value();
-        typename RefTypeTraits<ARG4>::RealType arg4 = InitValueTrait<typename RefTypeTraits<ARG4>::RealType>::value();
-        typename RefTypeTraits<ARG5>::RealType arg5 = InitValueTrait<typename RefTypeTraits<ARG5>::RealType>::value();
-        typename RefTypeTraits<ARG6>::RealType arg6 = InitValueTrait<typename RefTypeTraits<ARG6>::RealType>::value();
-        typename RefTypeTraits<ARG7>::RealType arg7 = InitValueTrait<typename RefTypeTraits<ARG7>::RealType>::value();
-        typename RefTypeTraits<ARG8>::RealType arg8 = InitValueTrait<typename RefTypeTraits<ARG8>::RealType>::value();
-        typename RefTypeTraits<ARG9>::RealType arg9 = InitValueTrait<typename RefTypeTraits<ARG9>::RealType>::value();
-        ScriptCppOps<typename RefTypeTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
-        ScriptCppOps<typename RefTypeTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
-        ScriptCppOps<typename RefTypeTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
-        ScriptCppOps<typename RefTypeTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
-        ScriptCppOps<typename RefTypeTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
-        ScriptCppOps<typename RefTypeTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
-        ScriptCppOps<typename RefTypeTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
-        ScriptCppOps<typename RefTypeTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
-        ScriptCppOps<typename RefTypeTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
+        typename ScriptRefTraits<ARG1>::RealType arg1 = InitValueTrait<typename ScriptRefTraits<ARG1>::RealType>::value();
+        typename ScriptRefTraits<ARG2>::RealType arg2 = InitValueTrait<typename ScriptRefTraits<ARG2>::RealType>::value();
+        typename ScriptRefTraits<ARG3>::RealType arg3 = InitValueTrait<typename ScriptRefTraits<ARG3>::RealType>::value();
+        typename ScriptRefTraits<ARG4>::RealType arg4 = InitValueTrait<typename ScriptRefTraits<ARG4>::RealType>::value();
+        typename ScriptRefTraits<ARG5>::RealType arg5 = InitValueTrait<typename ScriptRefTraits<ARG5>::RealType>::value();
+        typename ScriptRefTraits<ARG6>::RealType arg6 = InitValueTrait<typename ScriptRefTraits<ARG6>::RealType>::value();
+        typename ScriptRefTraits<ARG7>::RealType arg7 = InitValueTrait<typename ScriptRefTraits<ARG7>::RealType>::value();
+        typename ScriptRefTraits<ARG8>::RealType arg8 = InitValueTrait<typename ScriptRefTraits<ARG8>::RealType>::value();
+        typename ScriptRefTraits<ARG9>::RealType arg9 = InitValueTrait<typename ScriptRefTraits<ARG9>::RealType>::value();
+        ScriptCppOps<typename ScriptRefTraits<ARG1>::RealType>::scriptToCpp(arg(1), arg1);
+        ScriptCppOps<typename ScriptRefTraits<ARG2>::RealType>::scriptToCpp(arg(2), arg2);
+        ScriptCppOps<typename ScriptRefTraits<ARG3>::RealType>::scriptToCpp(arg(3), arg3);
+        ScriptCppOps<typename ScriptRefTraits<ARG4>::RealType>::scriptToCpp(arg(4), arg4);
+        ScriptCppOps<typename ScriptRefTraits<ARG5>::RealType>::scriptToCpp(arg(5), arg5);
+        ScriptCppOps<typename ScriptRefTraits<ARG6>::RealType>::scriptToCpp(arg(6), arg6);
+        ScriptCppOps<typename ScriptRefTraits<ARG7>::RealType>::scriptToCpp(arg(7), arg7);
+        ScriptCppOps<typename ScriptRefTraits<ARG8>::RealType>::scriptToCpp(arg(8), arg8);
+        ScriptCppOps<typename ScriptRefTraits<ARG9>::RealType>::scriptToCpp(arg(9), arg9);
 
         ((CLASS_TYPE*)pobjArg->*func)(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
         Py_RETURN_NONE;

@@ -152,6 +152,18 @@ ffpython.buildTmpObj = buildTmpObj				\n\
 }
 FFPython::~FFPython()
 {
+	Py_XDECREF(pyobjBuildTmpObj);
+	pyobjBuildTmpObj = NULL;
+	for (size_t i = 0; i < m_regFuncs.size(); ++i)
+	{
+		delete m_regFuncs[i];
+	}
+	m_regFuncs.clear();
+	for (size_t i = 0; i < m_listGlobalCache.size(); ++i)
+	{
+		Py_XDECREF(m_listGlobalCache[i]);
+	}
+	m_listGlobalCache.clear();
 	if (Py_IsInitialized())
 		Py_Finalize();
 }
@@ -267,11 +279,13 @@ ffpython.%s = %s                                                     \n\
 	else if (nOps == E_CLASS_METHOD) {
 		if (nameClass.empty())
 			nameClass = m_curRegClassName;
+		FFPython::m_regFuncs.back()->strName = nameClass + "." + name;
 		call<void>("ffpython", "regMethodExt", FFPython::m_regFuncs.size() - 1, name, nameClass);
 	}
 	else if (nOps == E_CLASS_FIELD) {
 		if (nameClass.empty())
 			nameClass = m_curRegClassName;
+		FFPython::m_regFuncs.back()->strName = nameClass + "." + name;
 		call<void>("ffpython", "regFieldExt", FFPython::m_regFuncs.size() - 1, name, nameClass);
 	}
 	return *this;
@@ -382,5 +396,44 @@ int FFPython::traceback(std::string& ret_)
 	Py_XDECREF(ptraceback);
 	PyErr_Clear();
 	printf("ffpython traceback:%s\n", ret_.c_str());
+	return 0;
+}
+bool FFPython::reload(const std::string& py_name_)
+{
+	PyObject* pName = NULL, * pModule = NULL;
+
+	pName = PyString_FromString(py_name_.c_str());
+	pModule = PyImport_Import(pName);
+	Py_DECREF(pName);
+	if (NULL == pModule)
+	{
+		traceback(m_strErr);
+		return false;
+	}
+
+	PyObject* pNewMod = PyImport_ReloadModule(pModule);
+	Py_DECREF(pModule);
+	if (NULL == pNewMod)
+	{
+		traceback(m_strErr);
+		return false;
+	}
+	Py_DECREF(pNewMod);
+	return 0;
+}
+bool FFPython::load(const std::string& py_name_)
+{
+	PyObject* pName = NULL, * pModule = NULL;
+
+	pName = PyString_FromString(py_name_.c_str());
+	pModule = PyImport_Import(pName);
+	Py_DECREF(pName);
+	if (NULL == pModule)
+	{
+		traceback(m_strErr);
+		return false;
+	}
+
+	Py_DECREF(pModule);
 	return 0;
 }
